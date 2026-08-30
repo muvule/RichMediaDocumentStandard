@@ -4,11 +4,19 @@ Author: muvule | License: Apache 2.0
 
 Demonstrates how to load .rmd documents into LlamaIndex Document nodes
 with structured metadata for multimodal RAG query pipelines.
+Uses pure Python in-memory parser (zero external dependencies).
 """
 
-import subprocess
+import os
+import sys
 import json
 from typing import List, Dict, Any
+
+try:
+    from rmd_core import parse_rmd
+except ImportError:
+    from examples.python.rmd_core import parse_rmd
+
 
 class RMDLlamaIndexReader:
     """
@@ -18,13 +26,11 @@ class RMDLlamaIndexReader:
         self.file_path = file_path
 
     def load_data(self) -> List[Dict[str, Any]]:
-        result = subprocess.run(
-            ["npx", "@rmd/cli", "export", self.file_path, "--format", "canonical"],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        graph = json.loads(result.stdout)
+        with open(self.file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        doc = parse_rmd(content)
+        graph = doc.to_agent_graph()
         doc_id = graph.get("documentId", "doc:untitled")
 
         nodes = []
@@ -56,8 +62,7 @@ class RMDLlamaIndexReader:
 
 
 if __name__ == "__main__":
-    import sys
-    sample_file = sys.argv[1] if len(sys.argv) > 1 else "./examples/image-report.rmd"
+    sample_file = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), "..", "image-report.rmd")
     print(f"Reading RMD document for LlamaIndex: {sample_file}")
     reader = RMDLlamaIndexReader(sample_file)
     nodes = reader.load_data()

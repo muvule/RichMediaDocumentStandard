@@ -94,19 +94,37 @@ describe('RMD CLI Subcommand Integration Tests', () => {
     expect(out).toContain('Grounded Evidence Anchors');
   });
 
-  it('should import YOLO bounding box labels into an RMD document', () => {
+  it('should import YOLO bounding box labels into an RMD document with classes mapping', () => {
     const yoloFile = path.resolve(__dirname, 'temp_yolo.txt');
+    const classesFile = path.resolve(__dirname, 'temp_classes.txt');
     fs.writeFileSync(yoloFile, '0 0.5 0.5 0.2 0.2\n1 0.2 0.3 0.1 0.15\n', 'utf-8');
+    fs.writeFileSync(classesFile, 'solar_crack\nhotspot_panel\n', 'utf-8');
 
-    const out = runCLI(`import ${yoloFile} --format yolo --image ./assets/test.jpg`);
+    const out = runCLI(`import ${yoloFile} --format yolo --image ./assets/test.jpg --classes ${classesFile}`);
     expect(out).toContain('```rmd:media');
     expect(out).toContain('```rmd:annotation');
-    expect(out).toContain('anno:yolo-obj-1');
-    expect(out).toContain('anno:yolo-obj-2');
+    expect(out).toContain('solar_crack');
+    expect(out).toContain('hotspot_panel');
 
-    if (fs.existsSync(yoloFile)) {
-      fs.unlinkSync(yoloFile);
-    }
+    if (fs.existsSync(yoloFile)) fs.unlinkSync(yoloFile);
+    if (fs.existsSync(classesFile)) fs.unlinkSync(classesFile);
+  });
+
+  it('should automatically repair invalid RMD documents with validate --fix', () => {
+    const brokenFile = path.resolve(__dirname, 'temp_broken.rmd');
+    const brokenContent = `# Broken Document\n\n\`\`\`rmd:media\nid: my!invalid@id#\nkind: image\nsrc: http://example.com/img.jpg\n\`\`\`\n`;
+    fs.writeFileSync(brokenFile, brokenContent, 'utf-8');
+
+    const out = runCLI(`validate ${brokenFile} --fix`);
+    expect(out).toContain('Automated Remediation: Applied');
+    
+    const fixedContent = fs.readFileSync(brokenFile, 'utf-8');
+    expect(fixedContent).toContain('---');
+    expect(fixedContent).toContain('rmd: 0.1');
+    expect(fixedContent).toContain('id: my-invalid-id-');
+    expect(fixedContent).toContain('src: https://');
+
+    if (fs.existsSync(brokenFile)) fs.unlinkSync(brokenFile);
   });
 });
 

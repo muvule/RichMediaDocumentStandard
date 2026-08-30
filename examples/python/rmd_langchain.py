@@ -4,11 +4,20 @@ Author: muvule | License: Apache 2.0
 
 Demonstrates how to load .rmd documents into LangChain Document objects
 and query grounded evidence anchors without blowing up the LLM context window.
+Uses pure Python in-memory parser (zero external dependencies).
 """
 
-import subprocess
+import os
+import sys
 import json
 from typing import List, Optional, Dict, Any
+
+# Import lightweight pure-Python RMD parser
+try:
+    from rmd_core import parse_rmd, RMDDocument
+except ImportError:
+    from examples.python.rmd_core import parse_rmd, RMDDocument
+
 
 class RMDDocumentLoader:
     """
@@ -18,21 +27,18 @@ class RMDDocumentLoader:
         self.file_path = file_path
 
     def load(self) -> List[Dict[str, Any]]:
-        # Export canonical agent graph via CLI or direct parser
-        result = subprocess.run(
-            ["npx", "@rmd/cli", "export", self.file_path, "--format", "canonical"],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        graph = json.loads(result.stdout)
+        with open(self.file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        doc = parse_rmd(content)
+        graph = doc.to_agent_graph()
         doc_id = graph.get("documentId", "doc:untitled")
 
         documents = []
 
         # 1. Document Level Overview
         documents.append({
-            "page_content": f"Document ID: {doc_id}\nTotal Nodes: {len(graph.get('nodes', []))}",
+            "page_content": f"Document ID: {doc_id}\nTitle: {graph.get('title', '')}\nSpec: {graph.get('spec', '0.1')}",
             "metadata": {
                 "source": self.file_path,
                 "document_id": doc_id,
@@ -46,19 +52,19 @@ class RMDDocumentLoader:
             target = anno.get("target")
             selector = anno.get("selector", {})
             confidence = anno.get("confidence", 1.0)
-            label = anno.get("body", {}).get("label", anno.get("type", "feature"))
+            label = anno.get("body", {}).get("label", anno.get("type", "feature")) if isinstance(anno.get("body"), dict) else anno.get("type", "feature")
 
-            content = (
+            content_text = (
                 f"[EVIDENCE ANCHOR]\n"
                 f"Label: {label}\n"
                 f"Claim: {claim}\n"
                 f"Target Media: {target}\n"
                 f"Selector: {json.dumps(selector)}\n"
-                f"Confidence: {confidence * 100:.1f}%"
+                f"Confidence: {float(confidence) * 100:.1f}%"
             )
 
             documents.append({
-                "page_content": content,
+                "page_content": content_text,
                 "metadata": {
                     "source": self.file_path,
                     "document_id": doc_id,
@@ -82,25 +88,25 @@ class RMDQueryRetriever:
         self.min_confidence = min_confidence
 
     def get_relevant_documents(self, query: str) -> List[Dict[str, Any]]:
-        # Query targeted evidence via CLI
-        result = subprocess.run(
-            ["npx", "@rmd/cli", "query", self.file_path, "--filter", query, "--evidence-pack"],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        pack = json.loads(result.stdout)
+        with open(self.file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        doc = parse_rmd(content)
+        matches = doc.find_evidence(query)
         
         relevant_docs = []
-        for claim in pack.get("claims", []):
-            conf = claim.get("confidence", 1.0)
+        for anno in matches:
+            conf = float(anno.get("confidence", 1.0))
             if conf >= self.min_confidence:
+                claim = anno.get("claim", "")
+                target = anno.get("target", "")
+                selector = anno.get("selector", {})
                 relevant_docs.append({
-                    "page_content": f"[GROUNDED CLAIM] {claim.get('statement')}",
+                    "page_content": f"[GROUNDED CLAIM] {claim}\nTarget: {target}\nSelector: {json.dumps(selector)}",
                     "metadata": {
-                        "claim_id": claim.get("id"),
-                        "target_media": claim.get("evidence", {}).get("mediaAssetId"),
-                        "location": claim.get("evidence", {}).get("location"),
+                        "annotation_id": anno.get("id"),
+                        "target_media": target,
+                        "location": selector,
                         "confidence": conf
                     }
                 })
@@ -108,8 +114,7 @@ class RMDQueryRetriever:
 
 
 if __name__ == "__main__":
-    import sys
-    sample_file = sys.argv[1] if len(sys.argv) > 1 else "./examples/image-report.rmd"
+    sample_file = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), "..", "image-report.rmd")
     print(f"Loading RMD document: {sample_file}")
     loader = RMDDocumentLoader(sample_file)
     docs = loader.load()

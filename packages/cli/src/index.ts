@@ -79,14 +79,77 @@ program
 program
   .command('validate <file>')
   .description('Validate schema, syntax, selectors, and cross-references of an RMD file')
-  .action((filePath) => {
+  .option('--fix', 'Automatically repair common schema errors, sanitize IDs, and upgrade insecure URLs')
+  .option('-o, --out <path>', 'Output file path for repaired document (default: overwrites target file)')
+  .action((filePath, options) => {
     try {
       const fullPath = path.resolve(process.cwd(), filePath);
       if (!fs.existsSync(fullPath)) {
         console.error(`Error: File not found: ${fullPath}`);
         process.exit(1);
       }
-      const content = fs.readFileSync(fullPath, 'utf-8');
+      let content = fs.readFileSync(fullPath, 'utf-8');
+
+      if (options.fix) {
+        let repairCount = 0;
+
+        // 1. Ensure frontmatter delimiters exist
+        if (!content.startsWith('---')) {
+          content = `---\nrmd: 0.1\nid: doc:${path.basename(filePath, path.extname(filePath))}\ntitle: ${path.basename(filePath)}\n---\n\n` + content;
+          repairCount++;
+        }
+
+        // 2. Ensure rmd: version in frontmatter
+        if (!/^---\s*[\r\n]+[\s\S]*?rmd:\s*[\d.]+/m.test(content)) {
+          content = content.replace(/^---\s*[\r\n]+/m, '---\nrmd: 0.1\n');
+          repairCount++;
+        }
+
+        // 3. Ensure document id in frontmatter
+        if (!/^---\s*[\r\n]+[\s\S]*?id:\s*[^\r\n]+/m.test(content)) {
+          content = content.replace(/^---\s*[\r\n]+/m, `---\nid: doc:${path.basename(filePath, path.extname(filePath))}\n`);
+          repairCount++;
+        }
+
+        // 4. Sanitize invalid ID characters in blocks
+        content = content.replace(/(\bid:\s*)([^\r\n]+)/g, (match, prefix, idVal) => {
+          const trimmed = idVal.trim().replace(/['"]/g, '');
+          const sanitized = trimmed.replace(/[^a-zA-Z0-9_\-.:]/g, '-');
+          if (sanitized !== trimmed) {
+            repairCount++;
+            return `${prefix}${sanitized}`;
+          }
+          return match;
+        });
+
+        // 5. Upgrade insecure http:// to https://
+        content = content.replace(/src:\s*http:\/\//g, () => {
+          repairCount++;
+          return 'src: https://';
+        });
+
+        // 6. Infer missing MIME types for media blocks
+        content = content.replace(/(```rmd:media[\s\S]*?src:\s*([^\r\n]+))([\s\S]*?```)/g, (match, prefix, srcUrl, suffix) => {
+          if (!match.includes('mime:')) {
+            const cleanSrc = srcUrl.trim().toLowerCase();
+            let mime = 'image/jpeg';
+            if (cleanSrc.endsWith('.png')) mime = 'image/png';
+            else if (cleanSrc.endsWith('.webp')) mime = 'image/webp';
+            else if (cleanSrc.endsWith('.mp4')) mime = 'video/mp4';
+            else if (cleanSrc.endsWith('.mp3')) mime = 'audio/mpeg';
+            else if (cleanSrc.endsWith('.wav')) mime = 'audio/wav';
+
+            repairCount++;
+            return `${prefix}\nmime: ${mime}${suffix}`;
+          }
+          return match;
+        });
+
+        const targetOut = options.out ? path.resolve(process.cwd(), options.out) : fullPath;
+        fs.writeFileSync(targetOut, content, 'utf-8');
+        console.log(`\n🔧 Automated Remediation: Applied ${repairCount} fix(es) to '${path.basename(targetOut)}'.`);
+      }
+
       const doc = parseRMD(content);
 
       console.log(`\n🔍 Validating: ${path.basename(fullPath)} ...`);
@@ -363,23 +426,26 @@ program
 
           const annotations = doc.nodes.filter((n: any) => n.type === 'rmd.annotation').map((n: any) => n.attrs);
 
-          const svgBoxes = annotations.map((ann: any) => {
+          const svgBoxes = annotations.map((ann: any, idx: number) => {
             const sel = ann.selector;
             if (!sel || sel.type !== 'xywh') return '';
             const x = sel.x || 0;
             const y = sel.y || 0;
             const w = sel.width || 100;
             const h = sel.height || 100;
-            const label = escapeHtml(ann.id || 'anno');
-            return `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="rgba(34,197,94,0.2)" stroke="#22c55e" stroke-width="3" rx="4"/>
-<text x="${x + 6}" y="${Math.max(16, y - 6)}" fill="#22c55e" font-size="14" font-family="sans-serif" font-weight="bold">${label}</text>`;
+            const label = escapeHtml(ann.id || `anno-${idx + 1}`);
+            return `<g class="rmd-reticle" data-target-id="${escapeHtml(ann.id)}" style="cursor: pointer;">
+  <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="rgba(34,197,94,0.18)" stroke="#22c55e" stroke-width="3" rx="4" class="reticle-rect"/>
+  <rect x="${x}" y="${Math.max(0, y - 22)}" width="${Math.max(60, label.length * 9)}" height="20" fill="#064e3b" rx="3" class="reticle-badge"/>
+  <text x="${x + 6}" y="${Math.max(14, y - 8)}" fill="#34d399" font-size="12" font-family="monospace" font-weight="bold">${label}</text>
+</g>`;
           }).join('\n');
 
           const tableRows = annotations.map((ann: any) => {
-            return `<tr>
-  <td style="padding: 8px; border-bottom: 1px solid #334155; font-family: monospace; color: #38bdf8;">${escapeHtml(ann.id)}</td>
-  <td style="padding: 8px; border-bottom: 1px solid #334155;">${escapeHtml(ann.claim || '')}</td>
-  <td style="padding: 8px; border-bottom: 1px solid #334155; font-family: monospace; color: #22c55e;">${((ann.confidence || 1) * 100).toFixed(0)}%</td>
+            return `<tr class="rmd-table-row" data-target-id="${escapeHtml(ann.id)}" style="cursor: pointer; transition: background 0.15s ease;">
+  <td style="padding: 10px; border-bottom: 1px solid #334155; font-family: monospace; color: #38bdf8; font-weight: 600;">${escapeHtml(ann.id)}</td>
+  <td style="padding: 10px; border-bottom: 1px solid #334155; color: #cbd5e1;">${escapeHtml(ann.claim || '')}</td>
+  <td style="padding: 10px; border-bottom: 1px solid #334155; font-family: monospace; color: #22c55e; font-weight: bold;">${((ann.confidence || 1) * 100).toFixed(0)}%</td>
 </tr>`;
           }).join('\n');
 
@@ -387,32 +453,60 @@ program
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>${title}</title>
+  <title>${title} | RMD Report</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
+    :root { color-scheme: dark; }
     body { font-family: system-ui, -apple-system, sans-serif; background: #0b0f19; color: #e2e8f0; margin: 0; padding: 2rem; }
-    .container { max-width: 1000px; margin: 0 auto; }
-    h1 { margin-bottom: 0.5rem; color: #ffffff; }
-    .badge { font-family: monospace; font-size: 0.75rem; background: #064e3b; color: #34d399; padding: 0.2rem 0.5rem; border-radius: 4px; }
-    .media-container { position: relative; margin: 1.5rem 0; border: 1px solid #334155; border-radius: 8px; overflow: hidden; background: #020617; }
-    .media-container img { width: 100%; height: auto; display: block; }
-    .media-container svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+    .container { max-width: 1100px; margin: 0 auto; }
+    h1 { margin: 0 0 0.5rem 0; color: #ffffff; font-size: 1.75rem; }
+    .header-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; border-bottom: 1px solid #1e293b; padding-bottom: 1rem; }
+    .badge { font-family: monospace; font-size: 0.75rem; background: #064e3b; color: #34d399; padding: 0.25rem 0.6rem; border-radius: 4px; border: 1px solid #059669; }
+    .toolbar { display: flex; gap: 0.5rem; align-items: center; background: #1e293b; padding: 0.4rem 0.8rem; border-radius: 6px; }
+    .btn { background: #334155; color: #f8fafc; border: 1px solid #475569; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.8rem; cursor: pointer; }
+    .btn:hover { background: #475569; }
+    .media-viewport { position: relative; margin: 1.5rem 0; border: 1px solid #334155; border-radius: 8px; overflow: hidden; background: #020617; max-height: 70vh; user-select: none; }
+    .media-canvas-wrapper { transform-origin: 0 0; transition: transform 0.1s ease-out; position: relative; width: 100%; display: block; }
+    .media-canvas-wrapper img { width: 100%; height: auto; display: block; }
+    .media-canvas-wrapper svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: auto; }
+    
+    .rmd-reticle.active .reticle-rect { stroke: #38bdf8 !important; stroke-width: 4 !important; fill: rgba(56, 189, 248, 0.35) !important; }
+    .rmd-reticle.active .reticle-badge { fill: #0369a1 !important; }
+    .rmd-reticle.active text { fill: #bae6fd !important; }
+
     table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; font-size: 0.875rem; }
-    th { text-align: left; padding: 8px; background: #1e293b; color: #94a3b8; font-family: monospace; }
+    th { text-align: left; padding: 10px; background: #1e293b; color: #94a3b8; font-family: monospace; font-size: 0.8rem; text-transform: uppercase; }
+    .rmd-table-row:hover { background: #1e293b; }
+    .rmd-table-row.active { background: rgba(56, 189, 248, 0.18) !important; border-left: 3px solid #38bdf8; }
   </style>
 </head>
 <body>
   <div class="container">
-    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-      <span class="badge">RMD Report</span>
-      <span style="font-family: monospace; font-size: 0.85rem; color: #64748b;">ID: ${docId}</span>
+    <div class="header-bar">
+      <div>
+        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+          <span class="badge">RMD Report</span>
+          <span style="font-family: monospace; font-size: 0.85rem; color: #94a3b8;">ID: ${docId}</span>
+        </div>
+        <h1>${title}</h1>
+      </div>
+      <div class="toolbar">
+        <span style="font-size: 0.8rem; color: #94a3b8; margin-right: 0.3rem;">Zoom:</span>
+        <button class="btn" onclick="zoom(1.2)">➕ Zoom In</button>
+        <button class="btn" onclick="zoom(0.8)">➖ Zoom Out</button>
+        <button class="btn" onclick="resetZoom()">🔄 Reset</button>
+      </div>
     </div>
-    <h1>${title}</h1>
-    <div class="media-container">
-      <img src="${mediaSrc}" alt="${docId}" />
-      <svg viewBox="0 0 ${imgWidth} ${imgHeight}">
-        ${svgBoxes}
-      </svg>
+
+    <div class="media-viewport" id="viewport">
+      <div class="media-canvas-wrapper" id="canvasWrapper">
+        <img src="${mediaSrc}" alt="${docId}" />
+        <svg viewBox="0 0 ${imgWidth} ${imgHeight}">
+          ${svgBoxes}
+        </svg>
+      </div>
     </div>
+
     <h2>Grounded Evidence Anchors</h2>
     <table>
       <thead>
@@ -423,6 +517,83 @@ program
       </tbody>
     </table>
   </div>
+
+  <script>
+    let scale = 1;
+    let panX = 0, panY = 0;
+    let isPanning = false, startX = 0, startY = 0;
+    const wrapper = document.getElementById('canvasWrapper');
+    const viewport = document.getElementById('viewport');
+
+    function updateTransform() {
+      wrapper.style.transform = \`translate(\${panX}px, \${panY}px) scale(\${scale})\`;
+    }
+
+    function zoom(factor) {
+      scale = Math.max(0.5, Math.min(5, scale * factor));
+      updateTransform();
+    }
+
+    function resetZoom() {
+      scale = 1; panX = 0; panY = 0;
+      updateTransform();
+    }
+
+    viewport.addEventListener('mousedown', (e) => {
+      if (scale > 1) {
+        isPanning = true;
+        startX = e.clientX - panX;
+        startY = e.clientY - panY;
+        viewport.style.cursor = 'grabbing';
+      }
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (isPanning) {
+        panX = e.clientX - startX;
+        panY = e.clientY - startY;
+        updateTransform();
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      isPanning = false;
+      viewport.style.cursor = scale > 1 ? 'grab' : 'default';
+    });
+
+    // Bidirectional Table and SVG Box Hover Synchronization
+    const reticles = document.querySelectorAll('.rmd-reticle');
+    const rows = document.querySelectorAll('.rmd-table-row');
+
+    function highlight(targetId, active) {
+      reticles.forEach(r => {
+        if (r.getAttribute('data-target-id') === targetId) {
+          r.classList.toggle('active', active);
+        }
+      });
+      rows.forEach(row => {
+        if (row.getAttribute('data-target-id') === targetId) {
+          row.classList.toggle('active', active);
+        }
+      });
+    }
+
+    reticles.forEach(r => {
+      const id = r.getAttribute('data-target-id');
+      r.addEventListener('mouseenter', () => highlight(id, true));
+      r.addEventListener('mouseleave', () => highlight(id, false));
+      r.addEventListener('click', () => {
+        const row = document.querySelector(\`.rmd-table-row[data-target-id="\${id}"]\`);
+        if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    });
+
+    rows.forEach(row => {
+      const id = row.getAttribute('data-target-id');
+      row.addEventListener('mouseenter', () => highlight(id, true));
+      row.addEventListener('mouseleave', () => highlight(id, false));
+    });
+  </script>
 </body>
 </html>`;
           break;
@@ -446,104 +617,170 @@ program
 
 // 6. Import Command (YOLO & Vision Dataset Bridges)
 program
-  .command('import <file>')
+  .command('import <targetPath>')
   .description('Import external dataset annotations (e.g. YOLO, COCO) into a valid RMD document')
   .requiredOption('-f, --format <format>', 'Input format: yolo, coco')
-  .option('-i, --image <imagePath>', 'Associated media image file path')
+  .option('-i, --image <imagePath>', 'Associated media image file path (single file mode)')
+  .option('--images <imagesDir>', 'Directory containing image files (batch directory mode)')
+  .option('-c, --classes <classesFile>', 'Class names file (classes.txt or data.yaml)')
   .option('-o, --out <outputPath>', 'Output .rmd file path (default: stdout)')
-  .action((filePath, options) => {
+  .action((targetPath, options) => {
     try {
-      const fullPath = path.resolve(process.cwd(), filePath);
+      const fullPath = path.resolve(process.cwd(), targetPath);
       if (!fs.existsSync(fullPath)) {
-        console.error(`Error: File not found: ${fullPath}`);
+        console.error(`Error: Path not found: ${fullPath}`);
         process.exit(1);
       }
 
       if (options.format.toLowerCase() === 'yolo') {
-        const yoloContent = fs.readFileSync(fullPath, 'utf-8');
-        const lines = yoloContent.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-
-        let imgWidth = 1920;
-        let imgHeight = 1080;
-        let imageSrc = options.image || './image.jpg';
-
-        if (options.image) {
-          const imgFullPath = path.resolve(process.cwd(), options.image);
-          if (fs.existsSync(imgFullPath)) {
-            const stat = fs.statSync(imgFullPath);
-            const headerSize = Math.min(stat.size, 1024 * 1024);
-            const fd = fs.openSync(imgFullPath, 'r');
-            const headerBuf = Buffer.alloc(headerSize);
-            fs.readSync(fd, headerBuf, 0, headerSize, 0);
-            fs.closeSync(fd);
-            const probed = probeBufferMetadata(new Uint8Array(headerBuf), path.basename(imgFullPath), imgFullPath, options.image);
-            if (probed.width) imgWidth = probed.width;
-            if (probed.height) imgHeight = probed.height;
+        // Load class names if provided
+        const classNames: Record<number, string> = {};
+        if (options.classes) {
+          const classesPath = path.resolve(process.cwd(), options.classes);
+          if (fs.existsSync(classesPath)) {
+            const rawClasses = fs.readFileSync(classesPath, 'utf-8');
+            if (classesPath.endsWith('.yaml') || classesPath.endsWith('.yml')) {
+              const namesMatch = rawClasses.match(/names:\s*\[(.*?)\]/s);
+              if (namesMatch) {
+                const names = namesMatch[1].split(',').map((s: string) => s.trim().replace(/['"]/g, ''));
+                names.forEach((name: string, idx: number) => { classNames[idx] = name; });
+              }
+            } else {
+              rawClasses.split('\n').map((l: string) => l.trim()).filter(Boolean).forEach((name: string, idx: number) => {
+                classNames[idx] = name;
+              });
+            }
           }
         }
 
-        const mediaId = `media:yolo-source-${Date.now().toString().slice(-4)}`;
-        const docId = `doc:yolo-import-${Date.now().toString().slice(-4)}`;
+        const stat = fs.statSync(fullPath);
+        const labelFiles: string[] = [];
 
+        if (stat.isDirectory()) {
+          const entries = fs.readdirSync(fullPath);
+          for (const e of entries) {
+            if (e.endsWith('.txt')) labelFiles.push(path.join(fullPath, e));
+          }
+        } else {
+          labelFiles.push(fullPath);
+        }
+
+        if (labelFiles.length === 0) {
+          console.error(`No YOLO .txt label files found in '${targetPath}'.`);
+          process.exit(1);
+        }
+
+        const docId = `doc:yolo-dataset-${Date.now().toString().slice(-4)}`;
         const rmdLines: string[] = [
           '---',
           'rmd: 0.1',
           `id: ${docId}`,
-          `title: YOLO Dataset Import (${path.basename(filePath)})`,
+          `title: YOLO Dataset Import (${path.basename(targetPath)})`,
           'language: en',
           'license: CC-BY-4.0',
           '---',
           '',
-          `# YOLO Annotation Import: ${path.basename(filePath)}`,
-          '',
-          '```rmd:media',
-          `id: ${mediaId}`,
-          'kind: image',
-          `src: ${imageSrc}`,
-          'mime: image/jpeg',
-          `width: ${imgWidth}`,
-          `height: ${imgHeight}`,
-          '```',
+          `# YOLO Annotation Dataset: ${path.basename(targetPath)}`,
           ''
         ];
 
-        lines.forEach((line, idx) => {
-          const parts = line.split(/\s+/).map(Number);
-          if (parts.length >= 5) {
-            const [classId, xCenter, yCenter, widthNorm, heightNorm] = parts;
-            const w = Math.round(widthNorm * imgWidth);
-            const h = Math.round(heightNorm * imgHeight);
-            const x = Math.max(0, Math.round((xCenter - widthNorm / 2) * imgWidth));
-            const y = Math.max(0, Math.round((yCenter - heightNorm / 2) * imgHeight));
+        let totalBoxes = 0;
 
-            rmdLines.push(
-              '```rmd:annotation',
-              `id: anno:yolo-obj-${idx + 1}`,
-              `target: ${mediaId}`,
-              'type: object',
-              'selector:',
-              '  type: xywh',
-              '  unit: pixel',
-              `  x: ${x}`,
-              `  y: ${y}`,
-              `  width: ${w}`,
-              `  height: ${h}`,
-              'body:',
-              `  classId: ${classId}`,
-              `  label: "Class ${classId}"`,
-              `claim: "Detected object of class ${classId} at pixel region [${x}, ${y}, ${w}, ${h}]."`,
-              'confidence: 0.90',
-              'source: model',
-              '```',
-              ''
-            );
+        labelFiles.forEach((lblFile, fileIdx) => {
+          const baseName = path.basename(lblFile, path.extname(lblFile));
+          let imgWidth = 1920;
+          let imgHeight = 1080;
+          let imageSrc = options.image || `./${baseName}.jpg`;
+
+          if (options.images) {
+            const possibleExts = ['.jpg', '.jpeg', '.png', '.webp'];
+            for (const ext of possibleExts) {
+              const candidate = path.join(path.resolve(process.cwd(), options.images), `${baseName}${ext}`);
+              if (fs.existsSync(candidate)) {
+                imageSrc = path.relative(process.cwd(), candidate).replace(/\\/g, '/');
+                const statImg = fs.statSync(candidate);
+                const headerSize = Math.min(statImg.size, 1024 * 1024);
+                const fd = fs.openSync(candidate, 'r');
+                const headerBuf = Buffer.alloc(headerSize);
+                fs.readSync(fd, headerBuf, 0, headerSize, 0);
+                fs.closeSync(fd);
+                const probed = probeBufferMetadata(new Uint8Array(headerBuf), path.basename(candidate), candidate, imageSrc);
+                if (probed.width) imgWidth = probed.width;
+                if (probed.height) imgHeight = probed.height;
+                break;
+              }
+            }
+          } else if (options.image && labelFiles.length === 1) {
+            const imgFullPath = path.resolve(process.cwd(), options.image);
+            if (fs.existsSync(imgFullPath)) {
+              const statImg = fs.statSync(imgFullPath);
+              const headerSize = Math.min(statImg.size, 1024 * 1024);
+              const fd = fs.openSync(imgFullPath, 'r');
+              const headerBuf = Buffer.alloc(headerSize);
+              fs.readSync(fd, headerBuf, 0, headerSize, 0);
+              fs.closeSync(fd);
+              const probed = probeBufferMetadata(new Uint8Array(headerBuf), path.basename(imgFullPath), imgFullPath, options.image);
+              if (probed.width) imgWidth = probed.width;
+              if (probed.height) imgHeight = probed.height;
+            }
           }
+
+          const mediaId = `media:yolo-img-${fileIdx + 1}`;
+          rmdLines.push(
+            '```rmd:media',
+            `id: ${mediaId}`,
+            'kind: image',
+            `src: ${imageSrc}`,
+            'mime: image/jpeg',
+            `width: ${imgWidth}`,
+            `height: ${imgHeight}`,
+            '```',
+            ''
+          );
+
+          const content = fs.readFileSync(lblFile, 'utf-8');
+          const lines = content.split('\n').map((l: string) => l.trim()).filter(Boolean);
+
+          lines.forEach((line: string, boxIdx: number) => {
+            const parts = line.split(/\s+/).map(Number);
+            if (parts.length >= 5) {
+              totalBoxes++;
+              const [classId, xCenter, yCenter, widthNorm, heightNorm] = parts;
+              const w = Math.round(widthNorm * imgWidth);
+              const h = Math.round(heightNorm * imgHeight);
+              const x = Math.max(0, Math.round((xCenter - widthNorm / 2) * imgWidth));
+              const y = Math.max(0, Math.round((yCenter - heightNorm / 2) * imgHeight));
+              const className = classNames[classId] || `Class ${classId}`;
+
+              rmdLines.push(
+                '```rmd:annotation',
+                `id: anno:yolo-${fileIdx + 1}-${boxIdx + 1}`,
+                `target: ${mediaId}`,
+                'type: object',
+                'selector:',
+                '  type: xywh',
+                '  unit: pixel',
+                `  x: ${x}`,
+                `  y: ${y}`,
+                `  width: ${w}`,
+                `  height: ${h}`,
+                'body:',
+                `  classId: ${classId}`,
+                `  label: "${className}"`,
+                `claim: "Detected ${className} (class ${classId}) at pixel region [${x}, ${y}, ${w}, ${h}]."`,
+                'confidence: 0.90',
+                'source: model',
+                '```',
+                ''
+              );
+            }
+          });
         });
 
         const outputRmd = rmdLines.join('\n');
         if (options.out) {
           fs.writeFileSync(path.resolve(process.cwd(), options.out), outputRmd, 'utf-8');
-          console.log(`Successfully imported ${lines.length} YOLO boxes into ${options.out}`);
+          console.log(`Successfully imported ${totalBoxes} YOLO boxes across ${labelFiles.length} file(s) into ${options.out}`);
         } else {
           console.log(outputRmd);
         }

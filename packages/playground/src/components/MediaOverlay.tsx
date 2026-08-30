@@ -201,6 +201,15 @@ export const MediaOverlay: React.FC<MediaOverlayProps> = ({
                   strokeDasharray={isSelected ? 'none' : '4,2'}
                   rx={4}
                 />
+                {/* 4 Corner Selection Anchor Handles */}
+                {isSelected && (
+                  <>
+                    <circle cx={x} cy={y} r={5} fill="#38bdf8" stroke="#0f172a" strokeWidth={2} />
+                    <circle cx={x + w} cy={y} r={5} fill="#38bdf8" stroke="#0f172a" strokeWidth={2} />
+                    <circle cx={x + w} cy={y + h} r={5} fill="#38bdf8" stroke="#0f172a" strokeWidth={2} />
+                    <circle cx={x} cy={y + h} r={5} fill="#38bdf8" stroke="#0f172a" strokeWidth={2} />
+                  </>
+                )}
                 <rect
                   x={x}
                   y={Math.max(0, y - 28)}
@@ -295,6 +304,34 @@ export const MediaOverlay: React.FC<MediaOverlayProps> = ({
             <button onClick={() => setPendingBox(null)} className="text-slate-400 hover:text-slate-200">
               <X className="w-4 h-4" />
             </button>
+          </div>
+
+          {/* Category Taxonomy Presets */}
+          <div className="flex items-center gap-1.5 flex-wrap text-xs font-mono">
+            <span className="text-slate-400 text-[11px]">Preset:</span>
+            {[
+              { label: 'defect-anomaly', claim: 'Critical defect or thermal anomaly identified.', name: '🔴 Defect' },
+              { label: 'detected-object', claim: 'Identified object component in scene.', name: '🟢 Object' },
+              { label: 'ocr-text-label', claim: 'Transcribed serial identifier or label.', name: '🔵 Text / OCR' },
+              { label: 'redacted-region', claim: 'Sensitive region or PII masked for privacy.', name: '🟣 Redaction' },
+              { label: 'geo-landmark', claim: 'Key landmark or reference anchor.', name: '🟡 Landmark' },
+            ].map((preset) => (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => {
+                  setNewLabel(preset.label);
+                  setNewClaim(preset.claim);
+                }}
+                className={`px-2 py-0.5 rounded border text-[11px] transition ${
+                  newLabel === preset.label
+                    ? 'bg-slate-800 border-emerald-400 text-emerald-300 font-bold'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                }`}
+              >
+                {preset.name}
+              </button>
+            ))}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs font-mono">

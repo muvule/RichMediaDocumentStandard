@@ -5,7 +5,7 @@
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Specification Version](https://img.shields.io/badge/Spec-v0.1-emerald.svg)](docs/SPEC-v0.1.md)
-[![Tests Passing](https://img.shields.io/badge/Tests-55%2F55%20Passing-brightgreen.svg)]()
+[![Tests Passing](https://img.shields.io/badge/Tests-56%2F56%20Passing-brightgreen.svg)]()
 [![Node Version](https://img.shields.io/badge/Node.js-18%2B-green.svg)]()
 
 ---
