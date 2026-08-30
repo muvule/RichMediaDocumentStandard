@@ -126,11 +126,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenStudio }) => {
           </h2>
 
           <p>
-            Autonomous coding and research agents are evolving from single-turn chatbots into multi-step agentic loops executing dozens of consecutive reasoning steps. In physical-world domains—such as infrastructure inspection, insurance claim triaging, legal discovery, and medical radiology—agents must reason over multi-gigabyte collections of high-resolution drone orthomosaics, 4K inspection videos, and audio testimonies.
+            Autonomous coding and research agents are evolving from single-turn chatbots into multi-step agentic loops executing dozens of consecutive reasoning steps. In physical-world domains—such as infrastructure inspection, insurance claim triaging, legal discovery, and medical radiology—agents must reason over multi-gigabyte collections of high-resolution drone images, 4K inspection videos, and audio testimonies.
           </p>
 
           <p>
-            Today's common practice is to pass raw media files directly into multimodal LLMs (e.g. Gemini 1.5/2.0 Pro or GPT-4o). However, inside an autonomous loop, ingesting a 1.5 GB drone video 50 times in a row creates an unbearable bottleneck:
+            Today's common practice is to pass raw media files directly into multimodal LLMs. However, inside an autonomous loop, ingesting a 1.5 GB drone video 50 times in a row creates an unbearable bottleneck:
           </p>
 
           {/* Cost Comparison Cards */}
