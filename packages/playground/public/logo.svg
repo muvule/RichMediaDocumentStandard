@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0f18" />
+      <stop offset="50%" stop-color="#07090e" />
+      <stop offset="100%" stop-color="#030407" />
+    </linearGradient>
+
+    <!-- Emerald-Cyan Glow Gradient -->
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="50%" stop-color="#059669" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+
+    <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+
+    <linearGradient id="sheetGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+
+    <!-- Glow Filter -->
+    <filter id="emeraldGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="12" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="24" result="blur" />
+      <feColorMatrix type="matrix" values="0 0 0 0 0.06 0 0 0 0 0.72 0 0 0 0 0.5 0 0 0 0.45 0" />
+      <feBlend in="SourceGraphic" in2="blur" mode="normal" />
+    </filter>
+  </defs>
+
+  <!-- Background Rounded Shield / App Icon Container -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" stroke="#1e293b" stroke-width="4" />
+  
+  <!-- Subtle Grid Ambient Lines -->
+  <path d="M 128 64 L 128 448 M 256 64 L 256 448 M 384 64 L 384 448" stroke="#1e293b" stroke-width="1.5" stroke-dasharray="6,8" opacity="0.4" />
+  <path d="M 64 128 L 448 128 M 64 256 L 448 256 M 64 384 L 448 384" stroke="#1e293b" stroke-width="1.5" stroke-dasharray="6,8" opacity="0.4" />
+
+  <!-- Ambient Glow Behind Document -->
+  <circle cx="256" cy="256" r="140" fill="#10b981" opacity="0.12" filter="url(#softGlow)" />
+
+  <!-- Document Sheet Base (Layer 1 - Backdrop) -->
+  <rect x="136" y="108" width="220" height="296" rx="20" fill="#0f172a" stroke="#334155" stroke-width="2" opacity="0.7" transform="rotate(-6 246 256)" />
+
+  <!-- Main Document Sheet (Layer 2) -->
+  <g filter="url(#emeraldGlow)">
+    <path d="M 160 100 L 310 100 L 368 158 L 368 392 C 368 405.25 357.25 416 344 416 L 160 416 C 146.75 416 136 405.25 136 392 L 136 124 C 136 110.75 146.75 100 160 100 Z" 
+          fill="url(#sheetGrad)" 
+          stroke="#38bdf8" 
+          stroke-width="3.5" 
+          stroke-opacity="0.8" />
+    
+    <!-- Folded Corner -->
+    <path d="M 310 100 L 310 158 L 368 158 Z" fill="#1e293b" stroke="#38bdf8" stroke-width="3" stroke-linejoin="round" />
+  </g>
+
+  <!-- Document Markdown Lines (Symbolizing Text Structure) -->
+  <rect x="176" y="152" width="104" height="12" rx="6" fill="#10b981" opacity="0.9" />
+  <rect x="176" y="180" width="160" height="8" rx="4" fill="#64748b" opacity="0.6" />
+  <rect x="176" y="200" width="130" height="8" rx="4" fill="#64748b" opacity="0.4" />
+
+  <!-- The "Rich Media" Bounding Box Lens / Reticle (Symbolizing Spatial Coordinates & Grounding) -->
+  <g transform="translate(196, 236)">
+    <!-- Bounding Box Area with Vibrant Gradient Stroke -->
+    <rect x="0" y="0" width="144" height="136" rx="12" fill="#022c22" fill-opacity="0.5" stroke="url(#accentGrad)" stroke-width="3" stroke-dasharray="8,5" />
+    
+    <!-- Precision Corner Brackets (W3C Spatial Selector Marker) -->
+    <!-- Top-Left -->
+    <path d="M -6 16 L -6 -6 L 16 -6" fill="none" stroke="#34d399" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+    <!-- Top-Right -->
+    <path d="M 128 -6 L 150 -6 L 150 16" fill="none" stroke="#34d399" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+    <!-- Bottom-Left -->
+    <path d="M -6 120 L -6 142 L 16 142" fill="none" stroke="#34d399" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+    <!-- Bottom-Right -->
+    <path d="M 128 142 L 150 142 L 150 120" fill="none" stroke="#34d399" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+
+    <!-- Center AI Node / Crosshair Target -->
+    <circle cx="72" cy="68" r="18" fill="url(#accentGrad)" />
+    <circle cx="72" cy="68" r="8" fill="#ffffff" />
+    
+    <!-- Crosshair Lines -->
+    <line x1="72" y1="36" x2="72" y2="48" stroke="#38bdf8" stroke-width="3" stroke-linecap="round" />
+    <line x1="72" y1="88" x2="72" y2="100" stroke="#38bdf8" stroke-width="3" stroke-linecap="round" />
+    <line x1="40" y1="68" x2="52" y2="68" stroke="#38bdf8" stroke-width="3" stroke-linecap="round" />
+    <line x1="92" y1="68" x2="104" y2="68" stroke="#38bdf8" stroke-width="3" stroke-linecap="round" />
+
+    <!-- Small Coordinate Tag Label (e.g. xywh) -->
+    <rect x="8" y="10" width="46" height="16" rx="4" fill="#0f172a" stroke="#10b981" stroke-width="1.5" />
+    <text x="31" y="22" fill="#34d399" font-family="monospace" font-size="9" font-weight="bold" text-anchor="middle" letter-spacing="0.5">xywh</text>
+  </g>
+
+  <!-- Glowing Dynamic Connection Particle (Temporal Wave Slice) -->
+  <path d="M 112 376 Q 148 340 188 382 T 264 360" fill="none" stroke="url(#cyanGrad)" stroke-width="4" stroke-linecap="round" opacity="0.85" />
+  <circle cx="112" cy="376" r="5" fill="#38bdf8" />
+  <circle cx="264" cy="360" r="5" fill="#10b981" />
+</svg>

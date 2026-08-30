@@ -9,6 +9,7 @@ import { BenchmarkPanel } from './components/BenchmarkPanel';
 import { MediaDropzone } from './components/MediaDropzone';
 import { DebugModal } from './components/DebugModal';
 import { LandingPage } from './components/LandingPage';
+import { RMDLogo } from './components/RMDLogo';
 import {
   Bot,
   User,
@@ -365,14 +366,7 @@ ${starterAnnLines.join('\n')}
       <header className="h-12 bg-slate-950 border-b border-slate-800 px-4 flex items-center justify-between select-none">
         {/* Logo and Brand */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20 text-slate-950 font-bold font-mono text-sm">
-              RMD
-            </div>
-            <span className="font-bold text-sm tracking-tight text-white">
-              Rich Media Document
-            </span>
-          </div>
+          <RMDLogo size={28} showText={true} />
 
           <button
             type="button"

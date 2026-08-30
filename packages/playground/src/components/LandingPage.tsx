@@ -10,6 +10,7 @@ import {
   XCircle,
   Play
 } from 'lucide-react';
+import { RMDLogo } from './RMDLogo';
 
 interface LandingPageProps {
   onOpenStudio: () => void;
@@ -29,14 +30,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenStudio }) => {
       {/* Top Sticky Header */}
       <header className="sticky top-0 z-50 bg-[#07090e]/90 backdrop-blur-md border-b border-slate-800/80 px-6 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center text-slate-950 font-bold font-mono text-base shadow-lg shadow-emerald-500/20">
-              RMD
-            </div>
-            <span className="font-bold text-base tracking-tight text-white">
-              Rich Media Document
-            </span>
-          </div>
+          <RMDLogo size={36} showText={true} />
 
           <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 font-mono text-[11px] font-semibold">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" aria-hidden="true"></span>
