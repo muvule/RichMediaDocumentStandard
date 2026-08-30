@@ -57,19 +57,24 @@ export function synthesizeRMDDocument(
 
   let totalAnnotations = 0;
   const allEntities: Array<{ id: string; label: string; type: string }> = [];
+  const usedAssetIds = new Set<string>();
 
   // 3. Process Each Asset
   for (let idx = 0; idx < assets.length; idx++) {
     const asset = assets[idx];
-    const cleanId = `${asset.kind}-${asset.fileName.replace(/[^a-zA-Z0-9_\-]/g, '-').toLowerCase()}`;
+    let cleanId = `${asset.kind}-${asset.fileName.replace(/[^a-zA-Z0-9_\-]/g, '-').toLowerCase()}`;
+    if (usedAssetIds.has(cleanId)) {
+      cleanId = `${cleanId}-${idx + 1}`;
+    }
+    usedAssetIds.add(cleanId);
 
     lines.push(`## Asset ${idx + 1}: ${asset.fileName}`);
     lines.push('');
     lines.push(
       `File format: \`${asset.mime}\` (${(asset.byteSize / (1024 * 1024)).toFixed(2)} MB)` +
-      (asset.width ? `, resolution: \`${asset.width}x${asset.height} px\`` : '') +
-      (asset.duration ? `, duration: \`${asset.duration}s\`` : '') +
-      '.'
+        (asset.width ? `, resolution: \`${asset.width}x${asset.height} px\`` : '') +
+        (asset.duration ? `, duration: \`${asset.duration}s\`` : '') +
+        '.'
     );
     lines.push('');
 

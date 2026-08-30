@@ -44,9 +44,13 @@ export function inspectC2PAManifest(manifest: unknown): C2PAVerificationResult {
     warnings.push("Manifest is missing 'claim_generator' identification.");
   }
 
+  if (!m.signature_info || !m.signature_info.issuer) {
+    warnings.push("Manifest lacks cryptographic signature_info or trusted issuer authority.");
+  }
+
   const assertionsCount = m.assertions?.length ?? 0;
-  const issuer = m.signature_info?.issuer ?? 'Mock C2PA Trust Root (Verified)';
-  const signedAt = m.signature_info?.time ?? new Date().toISOString();
+  const issuer = m.signature_info?.issuer;
+  const signedAt = m.signature_info?.time;
 
   return {
     verified: warnings.length === 0,

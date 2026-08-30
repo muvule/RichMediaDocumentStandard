@@ -27,6 +27,8 @@ export function toAgentGraph(doc: RMDDocument): AgentGraph {
   const indexes: IndexBlockAttrs[] = [];
   const relationships: Array<{ from: string; to: string; type: string }> = [];
 
+  const annotationIds = new Set(doc.nodes.filter((n) => n.type === 'rmd.annotation').map((n) => (n as AnnotationASTNode).attrs.id));
+
   for (const node of doc.nodes) {
     switch (node.type) {
       case 'rmd.media': {
@@ -40,7 +42,7 @@ export function toAgentGraph(doc: RMDDocument): AgentGraph {
         relationships.push({
           from: a.id,
           to: a.target,
-          type: 'targets'
+          type: annotationIds.has(a.target) ? 'annotates' : 'targets'
         });
         break;
       }
@@ -76,7 +78,13 @@ export function toAgentGraph(doc: RMDDocument): AgentGraph {
         break;
       }
       case 'rmd.index': {
-        indexes.push((node as IndexASTNode).attrs);
+        const idx = (node as IndexASTNode).attrs;
+        indexes.push(idx);
+        relationships.push({
+          from: idx.id,
+          to: idx.target,
+          type: 'indexes'
+        });
         break;
       }
     }

@@ -161,7 +161,75 @@ program
     }
   });
 
-// 4. Export Command
+// 4. Query Command
+program
+  .command('query <file>')
+  .description('Query grounded evidence anchors, generate evidence packs, or format prompt context')
+  .option('-f, --filter <term>', 'Filter evidence annotations by claim or body keyword')
+  .option('-t, --tokens', 'Output token-budgeted prompt context for LLM Turn injection')
+  .option('-e, --evidence-pack', 'Output structured Evidence Pack JSON for autonomous agent tools')
+  .option('--json', 'Output results as JSON')
+  .option('--min-confidence <number>', 'Minimum confidence threshold (default: 0.75)', '0.75')
+  .action((filePath, options) => {
+    try {
+      const fullPath = path.resolve(process.cwd(), filePath);
+      if (!fs.existsSync(fullPath)) {
+        console.error(`Error: File not found: ${fullPath}`);
+        process.exit(1);
+      }
+      const content = fs.readFileSync(fullPath, 'utf-8');
+      const doc = parseRMD(content);
+      const engine = new RMDQueryEngine(doc);
+
+      if (options.evidencePack) {
+        const pack = engine.generateEvidencePack({
+          agentName: 'RMDCliAgent',
+          minConfidence: parseFloat(options.minConfidence) || 0.75,
+          filter: options.filter
+        });
+        console.log(JSON.stringify(pack, null, 2));
+        return;
+      }
+
+      if (options.tokens) {
+        const promptContext = engine.toPromptContext({ query: options.filter });
+        console.log(promptContext);
+        return;
+      }
+
+      const results = options.filter
+        ? engine.findEvidence(options.filter)
+        : doc.nodes
+            .filter((n) => n.type === 'rmd.annotation')
+            .map((n: any) => engine.resolveEvidenceSlice(n.attrs.id))
+            .filter(Boolean);
+
+      if (options.json) {
+        console.log(JSON.stringify(results, null, 2));
+      } else {
+        console.log(`\n🔍 RMD QUERY RESULTS: ${doc.frontMatter.title}`);
+        console.log(
+          `Found ${results.length} matching evidence slice(s)${
+            options.filter ? ` for filter '${options.filter}'` : ''
+          }:\n`
+        );
+        for (const slice of results) {
+          if (!slice) continue;
+          const selectorStr = formatSelector(slice.selector);
+          const conf = slice.confidence !== undefined ? ` (${(slice.confidence * 100).toFixed(0)}%)` : '';
+          console.log(` - [${slice.annotationId}] ➔ Target: ${slice.targetAssetId} [${slice.assetKind}]${conf}`);
+          console.log(`   Selector: ${selectorStr}`);
+          if (slice.claim) console.log(`   Claim: "${slice.claim}"`);
+        }
+        console.log('');
+      }
+    } catch (err: any) {
+      console.error(`Query exception: ${err.message}`);
+      process.exit(1);
+    }
+  });
+
+// 5. Export Command
 program
   .command('export <file>')
   .description('Export parsed AST, flattened Agent Graph, or LLM Prompt Context')

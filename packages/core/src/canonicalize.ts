@@ -1,5 +1,6 @@
 /**
  * Deterministically sort all keys of an object recursively (RFC 8785 JSON Canonicalization Scheme).
+ * Omits keys with undefined, function, or symbol values.
  */
 export function canonicalizeJSON(obj: unknown): string {
   if (obj === null || typeof obj !== 'object') {
@@ -7,24 +8,31 @@ export function canonicalizeJSON(obj: unknown): string {
   }
 
   if (Array.isArray(obj)) {
-    return '[' + obj.map(canonicalizeJSON).join(',') + ']';
+    return '[' + obj.map((item) => (item === undefined ? 'null' : canonicalizeJSON(item))).join(',') + ']';
   }
 
   const sortedKeys = Object.keys(obj as Record<string, unknown>).sort();
-  const pairs = sortedKeys.map((key) => {
+  const pairs: string[] = [];
+
+  for (const key of sortedKeys) {
     const val = (obj as Record<string, unknown>)[key];
-    return JSON.stringify(key) + ':' + canonicalizeJSON(val);
-  });
+    if (val !== undefined && typeof val !== 'function' && typeof val !== 'symbol') {
+      pairs.push(JSON.stringify(key) + ':' + canonicalizeJSON(val));
+    }
+  }
 
   return '{' + pairs.join(',') + '}';
 }
 
 /**
  * Universal synchronous SHA-256 implementation (works identically in Node.js, Browsers, Edge, and Deno).
+ * Accepts raw Uint8Array buffers without intermediate string conversion, as well as strings and objects.
  */
-export function computeSha256(data: string | object): string {
-  const message = typeof data === 'string' ? data : canonicalizeJSON(data);
-  const bytes = new TextEncoder().encode(message);
+export function computeSha256(data: Uint8Array | string | object): string {
+  const bytes =
+    data instanceof Uint8Array
+      ? data
+      : new TextEncoder().encode(typeof data === 'string' ? data : canonicalizeJSON(data));
   
   // SHA-256 constants
   const K = [

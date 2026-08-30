@@ -49,9 +49,19 @@ export const DebugModal: React.FC<DebugModalProps> = ({
   const getFixesForDiagnostic = (diag: ParseDiagnostic): AutoFixAction[] => {
     const fixes: AutoFixAction[] = [];
 
+    const replaceInDiagRange = (src: string, replacer: (blockText: string) => string): string => {
+      if (diag.range && diag.range.start.offset !== undefined && diag.range.end.offset !== undefined) {
+        const before = src.slice(0, diag.range.start.offset);
+        const blockText = src.slice(diag.range.start.offset, diag.range.end.offset);
+        const after = src.slice(diag.range.end.offset);
+        return before + replacer(blockText) + after;
+      }
+      return replacer(src);
+    };
+
     // 1. Unknown Target (e.g. annotation points to non-existent asset)
     if (diag.code === 'ERR_UNKNOWN_TARGET') {
-      const match = diag.message.match(/targets non-existent media asset '([^']+)'/);
+      const match = diag.message.match(/targets non-existent media asset (?:or annotation )?'([^']+)'/);
       const badTarget = match ? match[1] : '';
 
       if (availableMedia.length > 0) {
@@ -60,19 +70,20 @@ export const DebugModal: React.FC<DebugModalProps> = ({
             title: `Point Target to '${media.id}' (${media.kind})`,
             description: `Change target from '${badTarget || 'unknown'}' to existing asset '${media.id}' in the document.`,
             applyFix: (src: string) => {
-              let updated = src;
-              if (badTarget) {
-                updated = updated.replace(
-                  new RegExp(`target:\\s*${badTarget.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'g'),
-                  `target: ${media.id}`
-                );
-              }
-              // If target is an image, fix any temporal selector in that block to spatial
-              if (media.kind === 'image') {
-                updated = updated.replace(/type:\s*temporal[\s\S]*?end:\s*[\d.]+/g, `type: xywh\n  unit: pixel\n  x: 100\n  y: 100\n  width: 300\n  height: 200`);
-                updated = updated.replace(/type:\s*quote/g, `type: object-region`);
-              }
-              return updated;
+              return replaceInDiagRange(src, (block) => {
+                let updated = block;
+                if (badTarget) {
+                  updated = updated.replace(
+                    new RegExp(`target:\\s*${badTarget.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'g'),
+                    `target: ${media.id}`
+                  );
+                }
+                if (media.kind === 'image') {
+                  updated = updated.replace(/type:\s*temporal[\s\S]*?end:\s*[\d.]+/g, `type: xywh\n  unit: pixel\n  x: 100\n  y: 100\n  width: 300\n  height: 200`);
+                  updated = updated.replace(/type:\s*quote/g, `type: object-region`);
+                }
+                return updated;
+              });
             }
           });
         }
@@ -95,9 +106,11 @@ export const DebugModal: React.FC<DebugModalProps> = ({
           title: `Convert Temporal Selector ➔ Spatial Bounding Box`,
           description: `Replace invalid temporal timecode with a valid spatial xywh pixel bounding box for image media.`,
           applyFix: (src: string) => {
-            let updated = src.replace(/type:\s*temporal[\s\S]*?end:\s*[\d.]+/g, `type: xywh\n  unit: pixel\n  x: 100\n  y: 100\n  width: 300\n  height: 200`);
-            updated = updated.replace(/type:\s*quote/g, `type: object-region`);
-            return updated;
+            return replaceInDiagRange(src, (block) => {
+              let updated = block.replace(/type:\s*temporal[\s\S]*?end:\s*[\d.]+/g, `type: xywh\n  unit: pixel\n  x: 100\n  y: 100\n  width: 300\n  height: 200`);
+              updated = updated.replace(/type:\s*quote/g, `type: object-region`);
+              return updated;
+            });
           }
         });
       } else if (diag.message.includes("allowed on visual media") && diag.message.includes("'audio'")) {
@@ -105,7 +118,9 @@ export const DebugModal: React.FC<DebugModalProps> = ({
           title: `Convert Spatial Selector ➔ Temporal Timecode`,
           description: `Replace spatial coordinates with a temporal start/end interval for audio media.`,
           applyFix: (src: string) => {
-            return src.replace(/type:\s*xywh[\s\S]*?height:\s*[\d.]+/g, `type: temporal\n  start: 0.0\n  end: 10.0`);
+            return replaceInDiagRange(src, (block) => {
+              return block.replace(/type:\s*xywh[\s\S]*?height:\s*[\d.]+/g, `type: temporal\n  start: 0.0\n  end: 10.0`);
+            });
           }
         });
       }

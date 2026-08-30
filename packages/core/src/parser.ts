@@ -27,12 +27,10 @@ import {
   validateDocument
 } from './validators.js';
 
-let nodeCounter = 0;
-function generateNodeId(prefix: string): string {
-  return `node:${prefix}:${++nodeCounter}`;
-}
-
 export function parseRMD(source: string): RMDDocument {
+  let nodeCounter = 0;
+  const generateNodeId = (prefix: string): string => `node:${prefix}:${++nodeCounter}`;
+
   const tokens = tokenizeRMD(source);
   const diagnostics: ParseDiagnostic[] = [];
   const nodes: ASTNode[] = [];

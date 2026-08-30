@@ -32,6 +32,75 @@ describe('RMDQueryEngine & Evidence Resolution', () => {
     expect(slice?.confidence).toBe(0.97);
   });
 
+  it('should generate structured Evidence Pack conforming to schema', () => {
+    const filePath = path.resolve(__dirname, '../../../examples/image-report.rmd');
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const doc = parseRMD(content);
+    const engine = new RMDQueryEngine(doc);
+
+    const pack = engine.generateEvidencePack({
+      agentName: 'TestInspectionAgent',
+      minConfidence: 0.8
+    });
+
+    expect(pack.documentId).toBe('doc:solar-roof-inspection-2026');
+    expect(pack.agent.name).toBe('TestInspectionAgent');
+    expect(pack.claims.length).toBeGreaterThan(0);
+    expect(pack.claims[0].evidence.length).toBeGreaterThan(0);
+    expect(pack.claims[0].evidence[0].mediaKind).toBe('image');
+    expect(pack.claims[0].evidence[0].mediaSrc).toBeDefined();
+    expect(pack.auditTrail?.totalEvidenceNodes).toBe(pack.claims.length);
+  });
+
+  it('should recursively resolve chained annotations targeting other annotations', () => {
+    const chainedRmd = `---
+rmd: 0.1
+id: doc:chain-test
+title: Chained Annotation Test
+---
+
+\`\`\`rmd:media
+id: media-drone
+kind: image
+src: ./test.jpg
+mime: image/jpeg
+\`\`\`
+
+\`\`\`rmd:annotation
+id: ann-hotspot-base
+target: media-drone
+type: defect
+selector:
+  type: xywh
+  unit: pixel
+  x: 100
+  y: 100
+  width: 200
+  height: 200
+claim: "Base thermal hotspot detected."
+confidence: 0.95
+\`\`\`
+
+\`\`\`rmd:annotation
+id: ann-hotspot-refutation
+target: ann-hotspot-base
+type: review
+claim: "Confirmed resistance overheating under secondary review."
+confidence: 0.98
+source: verified
+\`\`\`
+`;
+    const doc = parseRMD(chainedRmd);
+    expect(doc.diagnostics.filter((d) => d.level === 'error')).toHaveLength(0);
+
+    const engine = new RMDQueryEngine(doc);
+    const resolved = engine.resolveEvidenceSlice('ann-hotspot-refutation');
+    expect(resolved).not.toBeNull();
+    expect(resolved?.targetAssetId).toBe('media-drone');
+    expect(resolved?.assetKind).toBe('image');
+    expect(resolved?.selector?.type).toBe('xywh');
+  });
+
   it('should generate formatted prompt context with token budgeting', () => {
     const filePath = path.resolve(__dirname, '../../../examples/agent-workflow.rmd');
     const content = fs.readFileSync(filePath, 'utf-8');

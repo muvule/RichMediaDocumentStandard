@@ -237,14 +237,18 @@ export function validateDocument(doc: RMDDocument): ParseDiagnostic[] {
 
   const ID_REGEX = /^[a-zA-Z0-9_\-.:]+$/;
 
-  // 2. Collect and Index Media Assets & Indexes
+  // 2. Collect and Index Media Assets, Annotations & Indexes
   const mediaMap = new Map<string, MediaASTNode>();
+  const annotationMap = new Map<string, AnnotationASTNode>();
   const indexSet = new Set<string>();
 
   for (const node of doc.nodes) {
     if (node.type === 'rmd.index') {
       const idxNode = node as IndexASTNode;
       indexSet.add(idxNode.attrs.id);
+    } else if (node.type === 'rmd.annotation') {
+      const annNode = node as AnnotationASTNode;
+      annotationMap.set(annNode.attrs.id, annNode);
     }
   }
 
@@ -361,15 +365,36 @@ export function validateDocument(doc: RMDDocument): ParseDiagnostic[] {
       const annNode = node as AnnotationASTNode;
       const targetId = annNode.attrs.target;
       const targetMedia = mediaMap.get(targetId);
+      const targetAnno = annotationMap.get(targetId);
 
-      if (!targetMedia && targetId !== doc.frontMatter.id && targetId !== 'doc') {
+      if (!targetMedia && !targetAnno && targetId !== doc.frontMatter.id && targetId !== 'doc') {
         diagnostics.push({
           level: 'error',
           code: 'ERR_UNKNOWN_TARGET',
-          message: `Annotation '${annNode.attrs.id}' targets non-existent media asset '${targetId}'.`,
+          message: `Annotation '${annNode.attrs.id}' targets non-existent media asset or annotation '${targetId}'.`,
           range: node.range,
           nodeId: annNode.attrs.id
         });
+      }
+
+      // Cycle detection for annotation-to-annotation chains
+      if (targetAnno) {
+        const chain = [annNode.attrs.id];
+        let curr: string | undefined = targetId;
+        while (curr && annotationMap.has(curr)) {
+          if (curr === annNode.attrs.id || (chain.length > 1 && chain.slice(1).includes(curr))) {
+            diagnostics.push({
+              level: 'error',
+              code: 'ERR_CYCLIC_TARGET_REFERENCE',
+              message: `Cyclic target reference detected in annotation chain: ${[...chain, curr].join(' ➔ ')}.`,
+              range: node.range,
+              nodeId: annNode.attrs.id
+            });
+            break;
+          }
+          chain.push(curr);
+          curr = annotationMap.get(curr)?.attrs.target;
+        }
       }
 
       if (annNode.attrs.confidence !== undefined && (annNode.attrs.confidence < 0 || annNode.attrs.confidence > 1)) {
@@ -382,8 +407,23 @@ export function validateDocument(doc: RMDDocument): ParseDiagnostic[] {
         });
       }
 
-      if (annNode.attrs.selector && targetMedia) {
-        const compat = isSelectorCompatibleWithMedia(annNode.attrs.selector, targetMedia.attrs.kind);
+      // Resolve root media for selector validation
+      let rootMedia = targetMedia;
+      if (!rootMedia && targetAnno) {
+        let curr: string | undefined = targetId;
+        const seen = new Set<string>();
+        while (curr && annotationMap.has(curr) && !seen.has(curr)) {
+          seen.add(curr);
+          curr = annotationMap.get(curr)?.attrs.target;
+          if (curr && mediaMap.has(curr)) {
+            rootMedia = mediaMap.get(curr);
+            break;
+          }
+        }
+      }
+
+      if (annNode.attrs.selector && rootMedia) {
+        const compat = isSelectorCompatibleWithMedia(annNode.attrs.selector, rootMedia.attrs.kind);
         if (!compat.valid) {
           diagnostics.push({
             level: 'error',
@@ -397,13 +437,13 @@ export function validateDocument(doc: RMDDocument): ParseDiagnostic[] {
         // Bounds check: temporal selector start/end against media duration
         if (
           annNode.attrs.selector.type === 'temporal' &&
-          targetMedia.attrs.duration !== undefined &&
-          annNode.attrs.selector.end > targetMedia.attrs.duration
+          rootMedia.attrs.duration !== undefined &&
+          annNode.attrs.selector.end > rootMedia.attrs.duration
         ) {
           diagnostics.push({
             level: 'warning',
             code: 'WARN_SELECTOR_OUT_OF_BOUNDS',
-            message: `Annotation temporal end (${annNode.attrs.selector.end}s) exceeds media duration (${targetMedia.attrs.duration}s).`,
+            message: `Annotation temporal end (${annNode.attrs.selector.end}s) exceeds media duration (${rootMedia.attrs.duration}s).`,
             range: node.range,
             nodeId: annNode.attrs.id
           });

@@ -119,11 +119,13 @@ export function tokenizeRMD(source: string): Token[] {
 
   while (lineIdx < lines.length) {
     const line = lines[lineIdx];
-    const rmdFenceMatch = line.match(/^```rmd:([a-zA-Z0-9_\-]+)\s*$/);
+    const rmdFenceMatch = line.match(/^[ ]{0,3}(`{3,}|~{3,})rmd:([a-zA-Z0-9_\-]+)\s*$/);
 
     if (rmdFenceMatch) {
       flushMarkdown();
-      const blockType = rmdFenceMatch[1];
+      const fenceChars = rmdFenceMatch[1];
+      const fenceCharType = fenceChars[0];
+      const blockType = rmdFenceMatch[2];
       const fenceStartLine = lineIdx;
       const fenceStartLoc = getLocation(lineIdx, 0);
       const tagEndLoc = getLocation(lineIdx, line.length);
@@ -133,7 +135,8 @@ export function tokenizeRMD(source: string): Token[] {
       let fenceEndLine = -1;
 
       while (lineIdx < lines.length) {
-        if (lines[lineIdx].trim() === '```') {
+        const checkLine = lines[lineIdx].trim();
+        if (checkLine.startsWith(fenceCharType.repeat(fenceChars.length)) && checkLine.replace(new RegExp(`^\\${fenceCharType}+`), '').trim() === '') {
           fenceEndLine = lineIdx;
           break;
         }

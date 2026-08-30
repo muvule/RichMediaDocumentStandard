@@ -368,3 +368,55 @@ export interface ByteSavingsMetrics {
   savingsPercentage: number;
   estimatedInferenceSpeedupMultiplier: number;
 }
+
+export interface EvidencePackOptions {
+  agentName?: string;
+  agentVersion?: string;
+  model?: string;
+  minConfidence?: number;
+  filter?: string;
+  maxClaims?: number;
+}
+
+export interface GroundedEvidenceAnchor {
+  annotationId: string;
+  mediaId: string;
+  mediaKind: MediaKind;
+  mediaSrc: string;
+  sha256?: string;
+  location?: Selector;
+  extractedContent?: {
+    ocrText?: string;
+    transcriptSlice?: string;
+    label?: string;
+    rawSliceUrl?: string;
+    [key: string]: unknown;
+  };
+}
+
+export interface GroundedClaim {
+  id: string;
+  claimText: string;
+  confidence: number;
+  source: EvidenceSource;
+  evidence: GroundedEvidenceAnchor[];
+}
+
+export interface GroundedEvidencePack {
+  documentId: string;
+  documentTitle: string;
+  generatedAt: string;
+  agent: {
+    name: string;
+    version?: string;
+    model?: string;
+  };
+  claims: GroundedClaim[];
+  auditTrail?: {
+    totalEvidenceNodes: number;
+    minConfidenceObserved: number;
+    cryptographicIntegrityVerified: boolean;
+    provenanceIssuer?: string;
+  };
+}
+

@@ -156,10 +156,18 @@ export const MediaOverlay: React.FC<MediaOverlayProps> = ({
               ? 'rgba(239, 68, 68, 0.2)'
               : 'rgba(234, 179, 8, 0.15)';
 
-            const x = sel.x ?? 0;
-            const y = sel.y ?? 0;
-            const w = sel.width ?? 100;
-            const h = sel.height ?? 100;
+            const isNormalized = sel.type === 'normalized-xywh' || sel.unit === 'normalized';
+            const isPercent = sel.unit === 'percent';
+
+            const rawX = sel.x ?? 0;
+            const rawY = sel.y ?? 0;
+            const rawW = sel.width ?? (isNormalized ? 0.2 : 100);
+            const rawH = sel.height ?? (isNormalized ? 0.2 : 100);
+
+            const x = isNormalized ? rawX * imgWidth : isPercent ? (rawX / 100) * imgWidth : rawX;
+            const y = isNormalized ? rawY * imgHeight : isPercent ? (rawY / 100) * imgHeight : rawY;
+            const w = isNormalized ? rawW * imgWidth : isPercent ? (rawW / 100) * imgWidth : rawW;
+            const h = isNormalized ? rawH * imgHeight : isPercent ? (rawH / 100) * imgHeight : rawH;
 
             return (
               <g
