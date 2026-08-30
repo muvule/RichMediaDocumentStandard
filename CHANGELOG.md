@@ -7,14 +7,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [0.2.0] - 2026-08-30
 
 ### Added
-* **Interactive Visual Bounding Box Annotator:** In `@rmd/playground`, added mouse click-and-drag reticle drawing on media canvases with responsive coordinate translation, live SVG dashed preview, and automatic `rmd:annotation` block insertion.
-* **LangChain & LlamaIndex Agent Adapters:** Added `RMDDocumentLoader` and `RMDQueryRetriever` in TypeScript (`@rmd/core/adapters`) and standalone Python reference scripts in `examples/python/`.
-* **Actionable CLI Diagnostic Remediation:** Enhanced `rmd validate` to output human-readable suggestions and copy-pasteable YAML example fixes for validation errors.
-* **Computer Vision & Web Exporters / Importers:**
-  * `rmd export --format coco`: Exports COCO JSON dataset format.
-  * `rmd export --format geojson`: Exports GeoJSON FeatureCollection.
-  * `rmd export --format html`: Generates standalone, zero-dependency HTML visual reports with embedded SVG bounding box overlays.
-  * `rmd import --format yolo`: Ingests YOLO normalized bounding box text files into valid `.rmd` documents.
+* **Pure-Python Zero-Dependency Parser:** Added `examples/python/rmd_core.py` providing in-memory parsing and node generation without requiring Node.js or PyYAML.
+* **Interactive Standalone HTML Reports:** Upgraded `rmd export --format html` with bidirectional table/SVG hover synchronization, click-to-focus navigation, and responsive pan/zoom controls.
+* **Automated CLI Remediation (`--fix`):** Enhanced `rmd validate --fix` to automatically repair missing frontmatter, sanitize invalid block IDs, upgrade insecure HTTP links, and infer missing media MIME types.
+* **Batch YOLO Dataset Ingestion:** Upgraded `rmd import --format yolo` to support full dataset directories with `--classes` mapping (`classes.txt` or `data.yaml`).
+* **Visual Canvas Taxonomy Presets & Handles:** Added 1-click classification presets (Defect, Object, OCR, Redaction, Landmark) and corner anchor handles in `@rmd/playground`.
+* **LangChain & LlamaIndex Agent Adapters:** Added `RMDDocumentLoader` and `RMDQueryRetriever` in TypeScript (`@rmd/core/adapters`) and native Python loaders.
+* **Actionable CLI Diagnostic Remediation:** Enhanced `rmd validate` to output formatted remediation guidance and example fixes.
+* **Computer Vision & Web Exporters:** Added COCO JSON, GeoJSON, and HTML report export formats.
 
 ---
 

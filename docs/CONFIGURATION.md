@@ -60,3 +60,32 @@ The `@rmd/cli` and `@rmd/core` tools discover configuration in the current worki
 | `WARN_SELECTOR_OUT_OF_BOUNDS` | Warning | Temporal selector end timecode exceeds media duration. |
 | `WARN_INVALID_ID_SYNTAX` | Warning | ID contains characters outside recommended `[a-zA-Z0-9_\-.:]+` pattern. |
 | `WARN_MISSING_MODEL_CONFIDENCE` | Warning | AI model annotation is missing a confidence score. |
+
+---
+
+## 4. CLI Subcommand Reference
+
+### `rmd validate <file> [options]`
+Validates syntax, schemas, cross-references, and selectors in an `.rmd` file.
+* `--fix`: Automatically repairs common syntax errors, sanitizes invalid characters in block IDs, upgrades insecure HTTP URLs, and infers missing MIME types.
+* `-o, --out <path>`: Output destination for repaired file (default: overwrites target file).
+
+### `rmd export <file> [options]`
+Exports `.rmd` documents into downstream standard formats:
+* `-f, --format <format>`: Output format:
+  * `html`: Standalone interactive HTML report with bidirectional SVG/table highlighting and pan/zoom controls.
+  * `coco`: Standard COCO format JSON (`images`, `annotations`, `categories`).
+  * `geojson`: GeoJSON FeatureCollection.
+  * `canonical`: Canonicalized Agent Graph JSON.
+  * `canonical-rmd`: Byte-exact normalized `.rmd` Markdown text.
+  * `context`: Token-optimized LLM context prompt string.
+* `-o, --out <path>`: Output file destination (default: stdout).
+
+### `rmd import <targetPath> [options]`
+Bridges external datasets into valid `.rmd` documents:
+* `-f, --format <format>`: Input format (`yolo`, `coco`).
+* `-i, --image <imagePath>`: Media image file path (single file mode).
+* `--images <imagesDir>`: Directory of images (batch folder mode).
+* `-c, --classes <classesFile>`: Class mapping file (`classes.txt` or `data.yaml`).
+* `-o, --out <path>`: Output `.rmd` file path.
+
