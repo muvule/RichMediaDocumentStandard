@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   FileCode,
-  Sparkles,
+  FileText,
+  ChevronDown,
+  Check,
   AlertCircle,
   AlertTriangle,
   CheckCircle2,
@@ -39,10 +41,28 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
   onDownloadGraph,
   onOpenDebugger
 }) => {
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
   const lineCount = content.split('\n').length;
   const charCount = content.length;
   const errorCount = diagnostics.filter((d) => d.level === 'error').length;
   const warningCount = diagnostics.filter((d) => d.level === 'warning').length;
+
+  const currentExample = EXAMPLES.find((x) => x.id === selectedExampleId) || EXAMPLES[0];
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isDropdownOpen]);
 
   return (
     <div className="flex flex-col h-full bg-slate-900 border-r border-slate-800">
@@ -55,23 +75,58 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
           </span>
         </div>
 
-        {/* Fixture Selector Dropdown */}
-        <div className="flex items-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-          <select
-            value={selectedExampleId}
-            onChange={(e) => {
-              const ex = EXAMPLES.find((x) => x.id === e.target.value);
-              if (ex) onSelectExample(ex);
-            }}
-            className="bg-slate-800 text-slate-200 text-xs rounded border border-slate-700 px-2 py-1 focus:outline-none focus:border-emerald-500 font-medium"
+        {/* Custom Fixture Selector Dropdown */}
+        <div className="relative" ref={dropdownRef}>
+          <button
+            type="button"
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="flex items-center gap-2 px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs rounded-lg border border-slate-700 hover:border-slate-600 font-medium transition shadow-sm"
+            aria-haspopup="listbox"
+            aria-expanded={isDropdownOpen}
           >
-            {EXAMPLES.map((ex) => (
-              <option key={ex.id} value={ex.id}>
-                {ex.name}
-              </option>
-            ))}
-          </select>
+            <span className="truncate max-w-[180px] sm:max-w-[220px] text-[11px] font-mono text-emerald-400">
+              {currentExample.name}
+            </span>
+            <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-150 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {isDropdownOpen && (
+            <div className="absolute right-0 top-full mt-1.5 w-72 bg-slate-950 border border-slate-700 rounded-xl shadow-2xl z-50 overflow-hidden py-1 divide-y divide-slate-800/80 animate-in fade-in zoom-in-95 duration-100 font-sans">
+              <div className="px-3 py-1.5 text-[10px] font-mono text-slate-500 font-bold uppercase tracking-wider">
+                Select Document Template
+              </div>
+              <div className="py-1">
+                {EXAMPLES.map((ex) => {
+                  const isSelected = ex.id === selectedExampleId;
+                  return (
+                    <button
+                      key={ex.id}
+                      type="button"
+                      onClick={() => {
+                        onSelectExample(ex);
+                        setIsDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-2 text-xs flex items-start justify-between gap-2 transition ${
+                        isSelected
+                          ? 'bg-emerald-950/50 text-emerald-300 font-semibold'
+                          : 'text-slate-300 hover:bg-slate-900 hover:text-white'
+                      }`}
+                    >
+                      <div className="space-y-0.5 flex-1 min-w-0">
+                        <div className="truncate text-xs font-mono">{ex.name}</div>
+                        <div className="text-[11px] text-slate-500 font-normal truncate">
+                          {ex.description}
+                        </div>
+                      </div>
+                      {isSelected && (
+                        <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

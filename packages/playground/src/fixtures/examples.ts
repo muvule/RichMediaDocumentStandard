@@ -9,7 +9,7 @@ export interface ExampleDoc {
 export const EXAMPLES: ExampleDoc[] = [
   {
     id: 'blank',
-    name: '✨ Blank Document (Upload your own media)',
+    name: 'Blank Document (Custom Upload)',
     kind: 'blank',
     description: 'Empty document ready for your media upload.',
     content: `---
@@ -27,7 +27,7 @@ Upload or drop any image, video, or audio file to automatically generate RMD med
   },
   {
     id: 'image-report',
-    name: 'Demo 1: Rooftop Solar Inspection (Image + Spatial)',
+    name: '1. Rooftop Solar Inspection (Image + Spatial)',
     kind: 'image',
     description: 'Orthomosaic drone photo with spatial bounding box annotations & serial OCR.',
     content: `---

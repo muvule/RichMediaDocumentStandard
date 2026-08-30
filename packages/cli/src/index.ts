@@ -269,7 +269,7 @@ program
         return asset;
       });
 
-      console.log(`\n🧠 Synthesizing evidence manifests and structured selectors...`);
+      console.log(`\nSynthesizing evidence manifests and structured selectors...`);
       const result = synthesizeRMDDocument(discoveredAssets, {
         title: options.title || `${path.basename(fullPath)} Report`,
         detectObjects: options.objects,
@@ -278,12 +278,12 @@ program
         minConfidence: parseFloat(options.minConfidence) || 0.8
       });
 
-      console.log(`✨ Ingestion complete: Generated ${result.doc.nodes.length} AST nodes with ${result.annotationsCount} grounded evidence anchor(s).`);
+      console.log(`Ingestion complete: Generated ${result.doc.nodes.length} AST nodes with ${result.annotationsCount} grounded evidence anchor(s).`);
 
       if (result.diagnostics.filter((d: any) => d.level === 'error').length === 0) {
-        console.log(`✅ Validation check: 0 errors (100% conformant RMD).`);
+        console.log(`Validation check: 0 errors (100% conformant RMD).`);
       } else {
-        console.log(`⚠️  Diagnostics found: ${result.diagnostics.length}`);
+        console.log(`Diagnostics found: ${result.diagnostics.length}`);
       }
 
       if (options.dryRun || !options.output) {
@@ -292,7 +292,7 @@ program
             ? path.join(fullPath, 'index.rmd')
             : `${fullPath.replace(/\.[^/.]+$/, '')}.rmd`;
           fs.writeFileSync(defaultOut, result.rmdContent, 'utf-8');
-          console.log(`\n💾 Saved generated document to: ${path.relative(process.cwd(), defaultOut)}`);
+          console.log(`\nSaved document to: ${path.relative(process.cwd(), defaultOut)}`);
         } else {
           console.log('\n--- SYNTHESIZED RMD DOCUMENT ---\n');
           console.log(result.rmdContent);
@@ -300,7 +300,7 @@ program
       } else {
         const outPath = path.resolve(process.cwd(), options.output);
         fs.writeFileSync(outPath, result.rmdContent, 'utf-8');
-        console.log(`\n💾 Saved generated document to: ${path.relative(process.cwd(), outPath)}`);
+        console.log(`\nSaved document to: ${path.relative(process.cwd(), outPath)}`);
       }
     } catch (err: any) {
       console.error(`Ingest exception: ${err.message}`);
