@@ -11,7 +11,9 @@ import {
   CheckCircle2,
   PlusCircle,
   RefreshCw,
-  FilePlus2
+  FilePlus2,
+  AlertTriangle,
+  ShieldCheck
 } from 'lucide-react';
 import { MediaBlockAttrs } from '@rmd/core';
 
@@ -36,6 +38,7 @@ export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
   const [urlMime, setUrlMime] = useState('image/jpeg');
   const [isProcessing, setIsProcessing] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [pendingMedia, setPendingMedia] = useState<MediaBlockAttrs | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -62,6 +65,7 @@ export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
   };
 
   const handleFileProcess = async (file: File) => {
+    setErrorMessage(null);
     setIsProcessing(true);
     setStatusMessage(`Analyzing ${file.name}...`);
 
@@ -72,7 +76,7 @@ export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
       // 1. If RMD or Markdown document
       if (ext === 'rmd' || ext === 'md' || file.type.includes('markdown') || file.type.includes('text')) {
         if (file.size > 25 * 1024 * 1024) {
-          throw new Error('Document file is too large (maximum 25MB for plain text RMD documents).');
+          throw new Error(`Document exceeds size limit: '${fileName}' is ${(file.size / (1024 * 1024)).toFixed(1)}MB. Plain-text .rmd files have a 25MB safety ceiling to prevent browser memory exhaustion.`);
         }
         const text = await file.text();
         onLoadRMDFile(text, fileName);
@@ -223,20 +227,21 @@ export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
       processReadyMedia(mediaAttrs);
     } catch (err: any) {
       console.error('Import error:', err);
-      setStatusMessage(`Error loading media: ${err.message}`);
+      setErrorMessage(err.message || 'Failed to process file.');
       setIsProcessing(false);
     }
   };
 
   const handleUrlSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
     const trimmed = urlInput.trim();
     if (!trimmed) return;
 
     // Security check: validate protocol against javascript: or unsafe schemes
     const isSafeUrl = /^(https?:\/\/|\.\/|\/|blob:|data:(image|video|audio)\/)/i.test(trimmed);
     if (!isSafeUrl || /^(javascript|vbscript|data:text\/html):/i.test(trimmed)) {
-      alert('Security Notice: Only standard web URLs (http://, https://) and media data URIs are permitted.');
+      setErrorMessage('Security Warning: Only standard web URLs (http://, https://) and media data URIs are permitted. Malicious or script protocols are blocked.');
       return;
     }
 
@@ -272,6 +277,26 @@ export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
             <X className="w-4 h-4" />
           </button>
         </div>
+
+        {/* High-Visibility UI Warning / Error Alert */}
+        {errorMessage && (
+          <div className="mx-5 mt-4 p-3.5 bg-red-950/80 border border-red-800 rounded-xl text-red-200 text-xs font-mono flex items-start gap-3 shadow-xl animate-in slide-in-from-top-2 duration-150">
+            <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+            <div className="flex-1 space-y-1">
+              <div className="font-bold text-red-300 flex items-center gap-1.5">
+                <span>Guardrail Warning</span>
+              </div>
+              <p className="text-red-200/90 font-sans text-xs leading-relaxed">{errorMessage}</p>
+            </div>
+            <button
+              onClick={() => setErrorMessage(null)}
+              className="text-red-400 hover:text-red-100 p-1 rounded-lg hover:bg-red-900/60 transition"
+              title="Dismiss warning"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* If pending media: Show Import Intent Selection */}
         {pendingMedia ? (
@@ -410,6 +435,11 @@ export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
                     <p className="text-[11px] text-slate-500 font-mono mt-1">
                       Supports MP4, WebM, MP3, WAV, JPG, PNG, WebP, SVG, RMD
                     </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/90 border border-slate-800 text-[10px] font-mono text-slate-400 shadow">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Max 25MB for .rmd text docs • Air-gapped local memory</span>
                   </div>
 
                   {isProcessing && (
