@@ -20,3 +20,8 @@ always_on: true
 * Preserve zero-dependency architectures in `@rmd/core`.
 * Maintain 100% client-side privacy in `@rmd/playground` (zero remote telemetry or uploads).
 * Write clean systems engineering comments without AI generator markers.
+
+## 4. GitHub CI/CD & Build Invariants
+* **Verify GitHub Builds:** Whenever changes or workflows are pushed to GitHub, always verify that CI/CD and deployment workflows complete successfully.
+* **Build-Before-Test Ordering:** Workflows and CI runners must always compile TypeScript workspaces (`npm run build`) before invoking tests (`npm test`) to guarantee compiled binaries and assets (`dist/`) exist.
+* **Test Resilience:** Integration tests that invoke compiled CLI binaries must include a `beforeAll` build fallback check to guarantee standalone test executability across environments.
