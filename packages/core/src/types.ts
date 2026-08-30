@@ -20,6 +20,8 @@ export interface ParseDiagnostic {
   code: string;
   range?: SourceRange;
   nodeId?: string;
+  suggestion?: string;
+  exampleFix?: string;
 }
 
 export interface FrontMatter {

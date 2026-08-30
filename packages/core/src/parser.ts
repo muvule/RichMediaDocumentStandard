@@ -46,7 +46,9 @@ export function parseRMD(source: string): RMDDocument {
     diagnostics.push({
       level: 'error',
       code: 'ERR_MISSING_FRONTMATTER',
-      message: 'RMD document is missing required YAML frontmatter with rmd, id, and title.'
+      message: 'RMD document is missing required YAML frontmatter with rmd, id, and title.',
+      suggestion: 'Add a YAML frontmatter block at the very start of the document.',
+      exampleFix: '---\nrmd: 0.1\nid: doc:inspection-2026\ntitle: Infrastructure Inspection Survey\n---'
     });
   }
 

@@ -251,21 +251,27 @@ export function validateDocument(doc: RMDDocument): ParseDiagnostic[] {
     diagnostics.push({
       level: 'error',
       code: 'ERR_MISSING_RMD_VERSION',
-      message: "Document frontmatter is missing required 'rmd' spec version."
+      message: "Document frontmatter is missing required 'rmd' spec version.",
+      suggestion: "Specify the 'rmd' spec version in frontmatter (e.g. 0.1).",
+      exampleFix: 'rmd: 0.1'
     });
   }
   if (!doc.frontMatter.id) {
     diagnostics.push({
       level: 'error',
       code: 'ERR_MISSING_DOC_ID',
-      message: "Document frontmatter is missing required 'id'."
+      message: "Document frontmatter is missing required 'id'.",
+      suggestion: "Assign a unique 'id' to the document frontmatter.",
+      exampleFix: 'id: doc:solar-roof-inspection-2026'
     });
   }
   if (!doc.frontMatter.title) {
     diagnostics.push({
       level: 'error',
       code: 'ERR_MISSING_DOC_TITLE',
-      message: "Document frontmatter is missing required 'title'."
+      message: "Document frontmatter is missing required 'title'.",
+      suggestion: 'Provide a descriptive title in document frontmatter.',
+      exampleFix: 'title: Commercial Rooftop Solar Array Inspection'
     });
   }
 
@@ -295,7 +301,9 @@ export function validateDocument(doc: RMDDocument): ParseDiagnostic[] {
           code: 'ERR_DUPLICATE_ID',
           message: `Duplicate ID detected: '${mediaNode.attrs.id}' is used multiple times.`,
           range: node.range,
-          nodeId: mediaNode.attrs.id
+          nodeId: mediaNode.attrs.id,
+          suggestion: `Rename '${mediaNode.attrs.id}' to a unique identifier.`,
+          exampleFix: `id: ${mediaNode.attrs.id}-part2`
         });
       } else {
         seenIds.add(mediaNode.attrs.id);
@@ -309,7 +317,9 @@ export function validateDocument(doc: RMDDocument): ParseDiagnostic[] {
           code: 'ERR_INVALID_ID_SYNTAX',
           message: `ID '${mediaNode.attrs.id}' contains special characters outside pattern [a-zA-Z0-9_\\-.:]+`,
           range: node.range,
-          nodeId: mediaNode.attrs.id
+          nodeId: mediaNode.attrs.id,
+          suggestion: 'Ensure IDs only contain alphanumeric characters, underscores, hyphens, periods, or colons.',
+          exampleFix: `id: media:${mediaNode.attrs.id.replace(/[^a-zA-Z0-9_\-.:]/g, '-')}`
         });
       }
 
@@ -402,12 +412,17 @@ export function validateDocument(doc: RMDDocument): ParseDiagnostic[] {
       const targetAnno = annotationMap.get(targetId);
 
       if (!targetMedia && !targetAnno && targetId !== doc.frontMatter.id && targetId !== 'doc') {
+        const availableIds = Array.from(mediaMap.keys()).concat(Array.from(annotationMap.keys()));
         diagnostics.push({
           level: 'error',
           code: 'ERR_UNKNOWN_TARGET',
           message: `Annotation '${annNode.attrs.id}' targets non-existent media asset or annotation '${targetId}'.`,
           range: node.range,
-          nodeId: annNode.attrs.id
+          nodeId: annNode.attrs.id,
+          suggestion: availableIds.length > 0
+            ? `Update 'target' to match an existing asset ID: [${availableIds.slice(0, 3).join(', ')}]`
+            : "Declare a preceding ```rmd:media block with a matching 'id'.",
+          exampleFix: `target: ${availableIds[0] || 'media:source-01'}`
         });
       }
 
@@ -422,7 +437,9 @@ export function validateDocument(doc: RMDDocument): ParseDiagnostic[] {
               code: 'ERR_CYCLIC_TARGET_REFERENCE',
               message: `Cyclic target reference detected in annotation chain: ${[...chain, curr].join(' ➔ ')}.`,
               range: node.range,
-              nodeId: annNode.attrs.id
+              nodeId: annNode.attrs.id,
+              suggestion: 'Break the circular chain by targeting an underlying media asset directly.',
+              exampleFix: `target: ${Array.from(mediaMap.keys())[0] || 'media:source-asset'}`
             });
             break;
           }
@@ -437,7 +454,9 @@ export function validateDocument(doc: RMDDocument): ParseDiagnostic[] {
           code: 'ERR_INVALID_CONFIDENCE_RANGE',
           message: `Annotation '${annNode.attrs.id}' confidence must be between 0.0 and 1.0 (received ${annNode.attrs.confidence}).`,
           range: node.range,
-          nodeId: annNode.attrs.id
+          nodeId: annNode.attrs.id,
+          suggestion: 'Ensure confidence is a normalized float between 0.0 and 1.0.',
+          exampleFix: 'confidence: 0.95'
         });
       }
 
@@ -464,7 +483,13 @@ export function validateDocument(doc: RMDDocument): ParseDiagnostic[] {
             code: 'ERR_INCOMPATIBLE_SELECTOR',
             message: `Incompatible selector on annotation '${annNode.attrs.id}': ${compat.error}`,
             range: node.range,
-            nodeId: annNode.attrs.id
+            nodeId: annNode.attrs.id,
+            suggestion: rootMedia.attrs.kind === 'image'
+              ? "Use a spatial selector (type: xywh) for image media."
+              : "Use a temporal selector (type: temporal) for video/audio media.",
+            exampleFix: rootMedia.attrs.kind === 'image'
+              ? 'selector:\n  type: xywh\n  unit: pixel\n  x: 100\n  y: 100\n  width: 200\n  height: 200'
+              : 'selector:\n  type: temporal\n  start: 0.0\n  end: 10.0'
           });
         }
 

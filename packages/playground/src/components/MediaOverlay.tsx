@@ -37,6 +37,19 @@ export const MediaOverlay: React.FC<MediaOverlayProps> = ({
 
   const containerRef = useRef<HTMLDivElement>(null);
 
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsDrawingMode(false);
+        setPendingBox(null);
+        setCurrentBox(null);
+        setIsDragging(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Spatial annotations targeting this media
   const spatialAnns = annotations.filter(
     (a) => a.target === media.id && a.selector && (a.selector.type === 'xywh' || a.selector.type === 'normalized-xywh')

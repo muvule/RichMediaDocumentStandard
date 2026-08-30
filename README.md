@@ -5,7 +5,7 @@
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Specification Version](https://img.shields.io/badge/Spec-v0.1-emerald.svg)](docs/SPEC-v0.1.md)
-[![Tests Passing](https://img.shields.io/badge/Tests-49%2F49%20Passing-brightgreen.svg)]()
+[![Tests Passing](https://img.shields.io/badge/Tests-55%2F55%20Passing-brightgreen.svg)]()
 [![Node Version](https://img.shields.io/badge/Node.js-18%2B-green.svg)]()
 
 ---
@@ -105,16 +105,23 @@ npm install -g @rmd/cli
 # Ingest any media directory into a structured RMD document
 rmd ingest ./surveys/ --output ./report.rmd
 
-# Validate document conformance & integrity
+# Validate document conformance & view actionable fix guidance
 rmd validate ./report.rmd
+
+# Export to standalone interactive HTML, COCO, or GeoJSON
+rmd export ./report.rmd --format html -o ./report.html
+rmd export ./report.rmd --format coco -o ./coco.json
+
+# Import YOLO dataset bounding boxes into an RMD document
+rmd import ./labels.txt --format yolo --image ./photo.jpg -o ./survey.rmd
 
 # Query evidence for an agent prompt
 rmd query ./report.rmd --filter "hotspot" --tokens
 ```
 
-### 2. Node.js / TypeScript SDK
+### 2. Node.js & LangChain SDK
 ```typescript
-import { parseRMD, toAgentGraph, RMDQueryEngine } from '@rmd/core';
+import { parseRMD, RMDQueryEngine, RMDDocumentLoader } from '@rmd/core';
 import * as fs from 'fs';
 
 const content = fs.readFileSync('./report.rmd', 'utf-8');
@@ -122,8 +129,9 @@ const content = fs.readFileSync('./report.rmd', 'utf-8');
 // 1. Instant AST Parse (< 2ms)
 const doc = parseRMD(content);
 
-// 2. Export Graph for Multimodal Agent Tool Execution
-const graph = toAgentGraph(doc);
+// 2. Ingest into LangChain Documents
+const loader = new RMDDocumentLoader(content);
+const docs = loader.load();
 
 // 3. Query Grounded Evidence Anchors
 const engine = new RMDQueryEngine(doc);

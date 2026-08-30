@@ -8,3 +8,5 @@ export * from './query.js';
 export * from './canonicalize.js';
 export * from './c2pa.js';
 export * from './ingest/index.js';
+export * from './adapters/index.js';
+

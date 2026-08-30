@@ -65,3 +65,30 @@ Probes image dimensions, video duration/timebase, audio codecs, and byte sizes w
 
 ### `synthesizeRMDDocument(assets: DiscoveredAsset[], options?: SynthesizerOptions): IngestResult`
 Synthesizes a clean `.rmd` document from a list of discovered media files.
+
+---
+
+## 5. Agent Adapters & Retrievers
+
+### `new RMDDocumentLoader(source: string | RMDDocument, sourcePath?: string)`
+Loads `.rmd` documents into LangChain `Document` objects containing atomic claims, spatial/temporal selectors, and metadata.
+
+```typescript
+import { RMDDocumentLoader } from '@rmd/core';
+
+const loader = new RMDDocumentLoader(rmdContent, 'inspection.rmd');
+const docs = loader.load();
+console.log(`Extracted ${docs.length} LangChain evidence documents.`);
+```
+
+### `new RMDQueryRetriever(docOrEngine: RMDDocument | RMDQueryEngine, options?: { minConfidence?: number; targetMediaId?: string })`
+Retrieves filtered evidence documents matching a semantic or keyword query string.
+
+```typescript
+import { RMDQueryRetriever, parseRMD } from '@rmd/core';
+
+const doc = parseRMD(rmdContent);
+const retriever = new RMDQueryRetriever(doc, { minConfidence: 0.85 });
+const relevantDocs = await retriever.getRelevantDocuments('hotspot');
+```
+

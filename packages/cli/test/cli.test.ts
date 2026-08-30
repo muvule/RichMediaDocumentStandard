@@ -8,9 +8,13 @@ describe('RMD CLI Subcommand Integration Tests', () => {
   const examplesDir = path.resolve(__dirname, '../../../examples');
 
   beforeAll(() => {
-    const distPath = path.resolve(__dirname, '../dist/index.js');
-    if (!fs.existsSync(distPath)) {
-      execSync('npm run build', { cwd: path.resolve(__dirname, '../../..') });
+    try {
+      execSync('npx tsc --project packages/core/tsconfig.json && npx tsc --project packages/cli/tsconfig.json', {
+        cwd: path.resolve(__dirname, '../../..'),
+        stdio: 'ignore'
+      });
+    } catch {
+      // If already built or tsc is in parent process
     }
   });
 
@@ -64,4 +68,45 @@ describe('RMD CLI Subcommand Integration Tests', () => {
     expect(out.startsWith('{')).toBe(true);
     expect(() => JSON.parse(out)).not.toThrow();
   });
+
+  it('should export COCO dataset format with --format coco', () => {
+    const out = runCLI(`export ./examples/image-report.rmd --format coco`);
+    const parsed = JSON.parse(out);
+    expect(parsed.images).toBeDefined();
+    expect(parsed.annotations).toBeDefined();
+    expect(parsed.categories).toBeDefined();
+    expect(parsed.images.length).toBeGreaterThan(0);
+    expect(parsed.annotations[0].bbox).toBeDefined();
+  });
+
+  it('should export GeoJSON format with --format geojson', () => {
+    const out = runCLI(`export ./examples/image-report.rmd --format geojson`);
+    const parsed = JSON.parse(out);
+    expect(parsed.type).toBe('FeatureCollection');
+    expect(parsed.features).toBeDefined();
+    expect(parsed.features[0].geometry.type).toBe('Polygon');
+  });
+
+  it('should export standalone interactive HTML with --format html', () => {
+    const out = runCLI(`export ./examples/image-report.rmd --format html`);
+    expect(out).toContain('<!DOCTYPE html>');
+    expect(out).toContain('<svg viewBox="0 0');
+    expect(out).toContain('Grounded Evidence Anchors');
+  });
+
+  it('should import YOLO bounding box labels into an RMD document', () => {
+    const yoloFile = path.resolve(__dirname, 'temp_yolo.txt');
+    fs.writeFileSync(yoloFile, '0 0.5 0.5 0.2 0.2\n1 0.2 0.3 0.1 0.15\n', 'utf-8');
+
+    const out = runCLI(`import ${yoloFile} --format yolo --image ./assets/test.jpg`);
+    expect(out).toContain('```rmd:media');
+    expect(out).toContain('```rmd:annotation');
+    expect(out).toContain('anno:yolo-obj-1');
+    expect(out).toContain('anno:yolo-obj-2');
+
+    if (fs.existsSync(yoloFile)) {
+      fs.unlinkSync(yoloFile);
+    }
+  });
 });
+

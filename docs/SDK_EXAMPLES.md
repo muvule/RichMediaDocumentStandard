@@ -2,51 +2,54 @@
 
 ---
 
-## 1. Python Integration Recipe
+## 1. LangChain Python Document Loader & Retriever
 
-Integrate `.rmd` documents into Python agent loops (LangChain, LlamaIndex, CrewAI, AutoGen) via CLI subprocess JSON export:
+Integrate `.rmd` documents directly into LangChain RAG pipelines using `RMDDocumentLoader` and `RMDQueryRetriever`:
 
 ```python
-import subprocess
-import json
+from examples.python.rmd_langchain import RMDDocumentLoader, RMDQueryRetriever
 
-def load_rmd_agent_graph(rmd_file_path: str) -> dict:
-    """Executes rmd compile/query to extract the structured AST graph."""
-    cmd = ["rmd", "query", rmd_file_path, "--tokens"]
-    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-    return result.stdout
+# 1. Ingest .rmd into atomic LangChain Document objects
+loader = RMDDocumentLoader("./examples/image-report.rmd")
+docs = loader.load()
 
-# Example LangChain Custom Retriever Tool
-class RMDEvidenceRetriever:
-    def __init__(self, rmd_path: str):
-        self.rmd_path = rmd_path
+print(f"Loaded {len(docs)} evidence documents.")
 
-    def get_grounded_evidence(self, query: str) -> list[dict]:
-        cmd = ["rmd", "query", self.rmd_path, "--filter", query]
-        out = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        return out.stdout
+# 2. Query targeted evidence with confidence filtering
+retriever = RMDQueryRetriever("./examples/image-report.rmd", min_confidence=0.85)
+evidence = retriever.get_relevant_documents("micro-fracture")
 ```
 
 ---
 
-## 2. Node.js Agent Pipeline
+## 2. LlamaIndex Python Node Reader
+
+Ingest `.rmd` documents into LlamaIndex query nodes with spatial coordinates and claims:
+
+```python
+from examples.python.rmd_llamaindex import RMDLlamaIndexReader
+
+reader = RMDLlamaIndexReader("./examples/image-report.rmd")
+nodes = reader.load_data()
+```
+
+---
+
+## 3. Node.js & TypeScript LangChain Integration
 
 ```typescript
-import { parseRMD, RMDQueryEngine } from '@rmd/core';
+import { parseRMD, RMDDocumentLoader, RMDQueryRetriever } from '@rmd/core';
 import * as fs from 'fs';
 
-export async function runAgentInspectionTurn(rmdFilePath: string, topic: string) {
-  const content = fs.readFileSync(rmdFilePath, 'utf-8');
-  const doc = parseRMD(content);
-  const engine = new RMDQueryEngine(doc);
+const content = fs.readFileSync('./examples/image-report.rmd', 'utf-8');
 
-  // 1. Fetch targeted evidence pack
-  const evidencePack = engine.generateEvidencePack({
-    agentName: 'SurveyorAI',
-    minConfidence: 0.80
-  });
+// 1. Ingest into LangChain Documents
+const loader = new RMDDocumentLoader(content, 'image-report.rmd');
+const docs = loader.load();
 
-  // 2. Pass evidence pack directly to LLM context
-  console.log(`Delivering ${evidencePack.claims.length} claims to LLM.`);
-}
+// 2. Query with custom retriever
+const doc = parseRMD(content);
+const retriever = new RMDQueryRetriever(doc, { minConfidence: 0.85 });
+const results = await retriever.getRelevantDocuments('hotspot');
 ```
+

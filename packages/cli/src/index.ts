@@ -15,6 +15,15 @@ import {
   synthesizeRMDDocument
 } from '@rmd/core';
 
+function escapeHtml(str: string): string {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 const program = new Command();
 
 program
@@ -94,12 +103,22 @@ program
           console.log(`\n❌ ${errors.length} Error(s) found:`);
           for (const err of errors) {
             console.log(`   - [${err.code}] ${err.message}`);
+            if (err.suggestion) {
+              console.log(`     💡 How to fix: ${err.suggestion}`);
+            }
+            if (err.exampleFix) {
+              const indented = err.exampleFix.split('\n').map((l: string) => `        ${l}`).join('\n');
+              console.log(`     📝 Example:\n${indented}`);
+            }
           }
         }
         if (warnings.length > 0) {
           console.log(`\n⚠️  ${warnings.length} Warning(s) found:`);
           for (const warn of warnings) {
             console.log(`   - [${warn.code}] ${warn.message}`);
+            if (warn.suggestion) {
+              console.log(`     💡 Suggestion: ${warn.suggestion}`);
+            }
           }
         }
         if (errors.length > 0) {
@@ -266,8 +285,150 @@ program
         case 'context':
           outputText = engine.toPromptContext();
           break;
+        case 'coco': {
+          const images = doc.nodes.filter((n: any) => n.type === 'rmd.media').map((n: any, idx: number) => {
+            const a = n.attrs;
+            return {
+              id: idx + 1,
+              file_name: a.src,
+              width: a.width || 1920,
+              height: a.height || 1080,
+              rmd_id: a.id
+            };
+          });
+          const imageMap = new Map(images.map((img: any) => [img.rmd_id, img.id]));
+          const categories = [{ id: 1, name: 'feature', supercategory: 'none' }];
+          const annotations = doc.nodes.filter((n: any) => n.type === 'rmd.annotation').map((n: any, idx: number) => {
+            const a = n.attrs;
+            const sel = a.selector;
+            let bbox = [0, 0, 100, 100];
+            if (sel && (sel.type === 'xywh' || sel.type === 'normalized-xywh')) {
+              bbox = [sel.x || 0, sel.y || 0, sel.width || 100, sel.height || 100];
+            }
+            return {
+              id: idx + 1,
+              image_id: imageMap.get(a.target) || 1,
+              category_id: 1,
+              bbox,
+              area: bbox[2] * bbox[3],
+              iscrowd: 0,
+              attributes: {
+                claim: a.claim,
+                confidence: a.confidence,
+                label: a.body?.label
+              }
+            };
+          });
+          outputText = JSON.stringify({ images, annotations, categories }, null, 2);
+          break;
+        }
+        case 'geojson': {
+          const features = doc.nodes.filter((n: any) => n.type === 'rmd.annotation').map((n: any) => {
+            const a = n.attrs;
+            const sel = a.selector;
+            let coordinates: any[] = [];
+            if (sel && sel.type === 'xywh') {
+              const minX = sel.x || 0;
+              const minY = sel.y || 0;
+              const maxX = minX + (sel.width || 0);
+              const maxY = minY + (sel.height || 0);
+              coordinates = [[[minX, minY], [maxX, minY], [maxX, maxY], [minX, maxY], [minX, minY]]];
+            }
+            return {
+              type: 'Feature',
+              geometry: {
+                type: 'Polygon',
+                coordinates
+              },
+              properties: {
+                id: a.id,
+                target: a.target,
+                claim: a.claim,
+                confidence: a.confidence,
+                label: a.body?.label,
+                type: a.type
+              }
+            };
+          });
+          outputText = JSON.stringify({ type: 'FeatureCollection', features }, null, 2);
+          break;
+        }
+        case 'html': {
+          const title = escapeHtml(doc.frontMatter.title || 'RMD Visual Report');
+          const docId = escapeHtml(doc.frontMatter.id);
+          const firstMedia = doc.nodes.find((n: any) => n.type === 'rmd.media') as any;
+          const mediaSrc = firstMedia ? escapeHtml(firstMedia.attrs.src) : '';
+          const imgWidth = firstMedia?.attrs.width || 1200;
+          const imgHeight = firstMedia?.attrs.height || 800;
+
+          const annotations = doc.nodes.filter((n: any) => n.type === 'rmd.annotation').map((n: any) => n.attrs);
+
+          const svgBoxes = annotations.map((ann: any) => {
+            const sel = ann.selector;
+            if (!sel || sel.type !== 'xywh') return '';
+            const x = sel.x || 0;
+            const y = sel.y || 0;
+            const w = sel.width || 100;
+            const h = sel.height || 100;
+            const label = escapeHtml(ann.id || 'anno');
+            return `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="rgba(34,197,94,0.2)" stroke="#22c55e" stroke-width="3" rx="4"/>
+<text x="${x + 6}" y="${Math.max(16, y - 6)}" fill="#22c55e" font-size="14" font-family="sans-serif" font-weight="bold">${label}</text>`;
+          }).join('\n');
+
+          const tableRows = annotations.map((ann: any) => {
+            return `<tr>
+  <td style="padding: 8px; border-bottom: 1px solid #334155; font-family: monospace; color: #38bdf8;">${escapeHtml(ann.id)}</td>
+  <td style="padding: 8px; border-bottom: 1px solid #334155;">${escapeHtml(ann.claim || '')}</td>
+  <td style="padding: 8px; border-bottom: 1px solid #334155; font-family: monospace; color: #22c55e;">${((ann.confidence || 1) * 100).toFixed(0)}%</td>
+</tr>`;
+          }).join('\n');
+
+          outputText = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>${title}</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; background: #0b0f19; color: #e2e8f0; margin: 0; padding: 2rem; }
+    .container { max-width: 1000px; margin: 0 auto; }
+    h1 { margin-bottom: 0.5rem; color: #ffffff; }
+    .badge { font-family: monospace; font-size: 0.75rem; background: #064e3b; color: #34d399; padding: 0.2rem 0.5rem; border-radius: 4px; }
+    .media-container { position: relative; margin: 1.5rem 0; border: 1px solid #334155; border-radius: 8px; overflow: hidden; background: #020617; }
+    .media-container img { width: 100%; height: auto; display: block; }
+    .media-container svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; font-size: 0.875rem; }
+    th { text-align: left; padding: 8px; background: #1e293b; color: #94a3b8; font-family: monospace; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+      <span class="badge">RMD Report</span>
+      <span style="font-family: monospace; font-size: 0.85rem; color: #64748b;">ID: ${docId}</span>
+    </div>
+    <h1>${title}</h1>
+    <div class="media-container">
+      <img src="${mediaSrc}" alt="${docId}" />
+      <svg viewBox="0 0 ${imgWidth} ${imgHeight}">
+        ${svgBoxes}
+      </svg>
+    </div>
+    <h2>Grounded Evidence Anchors</h2>
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Factual Claim</th><th>Confidence</th></tr>
+      </thead>
+      <tbody>
+        ${tableRows}
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>`;
+          break;
+        }
         default:
-          console.error(`Unknown format: '${options.format}'. Use 'ast', 'graph', 'json', 'canonical', 'canonical-rmd', or 'context'.`);
+          console.error(`Unknown format: '${options.format}'. Use 'ast', 'graph', 'json', 'canonical', 'canonical-rmd', 'context', 'coco', 'geojson', or 'html'.`);
           process.exit(1);
       }
 
@@ -279,6 +440,119 @@ program
       }
     } catch (err: any) {
       console.error(`Export exception: ${err.message}`);
+      process.exit(1);
+    }
+  });
+
+// 6. Import Command (YOLO & Vision Dataset Bridges)
+program
+  .command('import <file>')
+  .description('Import external dataset annotations (e.g. YOLO, COCO) into a valid RMD document')
+  .requiredOption('-f, --format <format>', 'Input format: yolo, coco')
+  .option('-i, --image <imagePath>', 'Associated media image file path')
+  .option('-o, --out <outputPath>', 'Output .rmd file path (default: stdout)')
+  .action((filePath, options) => {
+    try {
+      const fullPath = path.resolve(process.cwd(), filePath);
+      if (!fs.existsSync(fullPath)) {
+        console.error(`Error: File not found: ${fullPath}`);
+        process.exit(1);
+      }
+
+      if (options.format.toLowerCase() === 'yolo') {
+        const yoloContent = fs.readFileSync(fullPath, 'utf-8');
+        const lines = yoloContent.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+        let imgWidth = 1920;
+        let imgHeight = 1080;
+        let imageSrc = options.image || './image.jpg';
+
+        if (options.image) {
+          const imgFullPath = path.resolve(process.cwd(), options.image);
+          if (fs.existsSync(imgFullPath)) {
+            const stat = fs.statSync(imgFullPath);
+            const headerSize = Math.min(stat.size, 1024 * 1024);
+            const fd = fs.openSync(imgFullPath, 'r');
+            const headerBuf = Buffer.alloc(headerSize);
+            fs.readSync(fd, headerBuf, 0, headerSize, 0);
+            fs.closeSync(fd);
+            const probed = probeBufferMetadata(new Uint8Array(headerBuf), path.basename(imgFullPath), imgFullPath, options.image);
+            if (probed.width) imgWidth = probed.width;
+            if (probed.height) imgHeight = probed.height;
+          }
+        }
+
+        const mediaId = `media:yolo-source-${Date.now().toString().slice(-4)}`;
+        const docId = `doc:yolo-import-${Date.now().toString().slice(-4)}`;
+
+        const rmdLines: string[] = [
+          '---',
+          'rmd: 0.1',
+          `id: ${docId}`,
+          `title: YOLO Dataset Import (${path.basename(filePath)})`,
+          'language: en',
+          'license: CC-BY-4.0',
+          '---',
+          '',
+          `# YOLO Annotation Import: ${path.basename(filePath)}`,
+          '',
+          '```rmd:media',
+          `id: ${mediaId}`,
+          'kind: image',
+          `src: ${imageSrc}`,
+          'mime: image/jpeg',
+          `width: ${imgWidth}`,
+          `height: ${imgHeight}`,
+          '```',
+          ''
+        ];
+
+        lines.forEach((line, idx) => {
+          const parts = line.split(/\s+/).map(Number);
+          if (parts.length >= 5) {
+            const [classId, xCenter, yCenter, widthNorm, heightNorm] = parts;
+            const w = Math.round(widthNorm * imgWidth);
+            const h = Math.round(heightNorm * imgHeight);
+            const x = Math.max(0, Math.round((xCenter - widthNorm / 2) * imgWidth));
+            const y = Math.max(0, Math.round((yCenter - heightNorm / 2) * imgHeight));
+
+            rmdLines.push(
+              '```rmd:annotation',
+              `id: anno:yolo-obj-${idx + 1}`,
+              `target: ${mediaId}`,
+              'type: object',
+              'selector:',
+              '  type: xywh',
+              '  unit: pixel',
+              `  x: ${x}`,
+              `  y: ${y}`,
+              `  width: ${w}`,
+              `  height: ${h}`,
+              'body:',
+              `  classId: ${classId}`,
+              `  label: "Class ${classId}"`,
+              `claim: "Detected object of class ${classId} at pixel region [${x}, ${y}, ${w}, ${h}]."`,
+              'confidence: 0.90',
+              'source: model',
+              '```',
+              ''
+            );
+          }
+        });
+
+        const outputRmd = rmdLines.join('\n');
+        if (options.out) {
+          fs.writeFileSync(path.resolve(process.cwd(), options.out), outputRmd, 'utf-8');
+          console.log(`Successfully imported ${lines.length} YOLO boxes into ${options.out}`);
+        } else {
+          console.log(outputRmd);
+        }
+      } else {
+        console.error(`Unsupported import format: '${options.format}'. Currently supported: 'yolo'.`);
+        process.exit(1);
+      }
+    } catch (err: any) {
+      console.error(`Import exception: ${err.message}`);
       process.exit(1);
     }
   });
