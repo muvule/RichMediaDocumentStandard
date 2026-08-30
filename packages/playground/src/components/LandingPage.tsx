@@ -92,10 +92,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenStudio }) => {
           {/* Author Byline */}
           <div className="flex items-center gap-3 pt-2 border-t border-slate-800/80">
             <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-emerald-500 to-cyan-400 flex items-center justify-center font-bold text-slate-950 font-mono text-sm shadow">
-              L
+              M
             </div>
             <div>
-              <div className="text-sm font-bold text-slate-200">Leo & RMD Project Contributors</div>
+              <div className="text-sm font-bold text-slate-200">muvule</div>
               <div className="text-xs text-slate-400 font-mono">Architecture & Open Standard Specification</div>
             </div>
           </div>
@@ -314,7 +314,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenStudio }) => {
           </h2>
 
           <p className="text-slate-300 leading-relaxed">
-            The RMD specification, TypeScript core engine (`@rmd/core`), CLI (`@rmd/cli`), and web studio are fully open-source under the <strong>Apache License 2.0</strong>, preserving attribution to the creator and open-source contributors while enabling unrestricted enterprise and community adoption.
+            The RMD specification, TypeScript core engine (`@rmd/core`), CLI (`@rmd/cli`), and web studio are fully open-source under the <strong>Apache License 2.0</strong>, preserving attribution to muvule while enabling unrestricted enterprise and community adoption.
           </p>
 
           {/* Action CTAs */}
@@ -346,7 +346,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenStudio }) => {
               <button
                 type="button"
                 onClick={() => copyToClipboard(
-                  `@misc{rmd2026standard,\n  title={Rich Media Document (RMD): An Open Standard for Agent-Native Multimodal AI},\n  author={Leo and RMD Contributors},\n  year={2026},\n  howpublished={\\url{https://github.com/muvule/RichMediaDocumentStandard}}\n}`,
+                  `@misc{rmd2026standard,\n  title={Rich Media Document (RMD): An Open Standard for Agent-Native Multimodal AI},\n  author={muvule},\n  year={2026},\n  howpublished={\\url{https://github.com/muvule/RichMediaDocumentStandard}}\n}`,
                   'bibtex'
                 )}
                 className="text-slate-400 hover:text-slate-200 transition text-[10px] font-mono flex items-center gap-1"
@@ -359,7 +359,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenStudio }) => {
 {`@misc{rmd2026standard,
   title={Rich Media Document (RMD): An Open Standard
         for Agent-Native Multimodal AI},
-  author={Leo and RMD Contributors},
+  author={muvule},
   year={2026},
   howpublished={\\url{https://github.com/muvule/RichMediaDocumentStandard}}
 }`}
@@ -374,7 +374,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenStudio }) => {
           <div className="flex items-center gap-2">
             <span className="font-bold text-slate-300">Rich Media Document (RMD)</span>
             <span>•</span>
-            <span>Created by Leo & RMD Contributors</span>
+            <span>Created by muvule</span>
           </div>
 
           <div className="flex items-center gap-4 text-slate-400">

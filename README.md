@@ -137,5 +137,5 @@ evidence: Cell micro-fracture causing resistance heating (Delta T = +14.2°C).
 Licensed under the **[Apache License 2.0](./LICENSE)**.
 
 ```txt
-Copyright (c) 2026 Leo and RMD Open Source Project Contributors.
+Copyright (c) 2026 muvule.
 ```
