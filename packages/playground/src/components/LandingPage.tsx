@@ -276,6 +276,58 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenStudio }) => {
               </tbody>
             </table>
           </div>
+
+          {/* Extended Markdown & Document Standards Detailed Comparison */}
+          <div className="space-y-4 pt-6">
+            <h3 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+              <span className="text-emerald-400 font-mono text-sm">3.1</span>
+              <span>Similar Extended Markdown & Document Standards</span>
+            </h3>
+
+            <div className="grid grid-cols-1 gap-4 font-sans text-sm">
+              {/* Markdoc & MDX */}
+              <div className="p-5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2.5 shadow-lg">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-bold text-cyan-300 font-mono text-xs tracking-wide">Markdoc (Stripe) & MDX</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950/80 text-cyan-400 border border-cyan-800/60 font-semibold uppercase">React & UI Rendering</span>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  <strong>What they do:</strong> Extend standard Markdown with custom tags and JSX components (e.g. <code className="text-emerald-400 font-mono text-[11px] bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800">{"{% callout %}"}</code> or <code className="text-emerald-400 font-mono text-[11px] bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800">{"<HeroImage />"}</code>) to build interactive web applications and documentation sites.
+                </p>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  <strong>Difference from RMD:</strong> Architected for browser DOM rendering rather than autonomous AI reasoning loops. They treat media as passive visual presentation elements with no intrinsic coordinate metadata, spatial bounding boxes, or temporal reasoning hooks.
+                </p>
+              </div>
+
+              {/* Quarto & R Markdown */}
+              <div className="p-5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2.5 shadow-lg">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-bold text-blue-300 font-mono text-xs tracking-wide">Quarto & R Markdown (.Rmd)</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-950/80 text-blue-400 border border-blue-800/60 font-semibold uppercase">Scientific Computing</span>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  <strong>What they do:</strong> Scientific publishing standards that execute embedded code cells (Python, R, Julia) to render dynamic statistical plots and reproducible analysis documents.
+                </p>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  <strong>Difference from RMD:</strong> Built around programmatic code execution and data science reports rather than indexing external multi-gigabyte media for low-latency agent retrieval and grounding.
+                </p>
+              </div>
+
+              {/* CommonMark / GFM */}
+              <div className="p-5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2.5 shadow-lg">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-bold text-emerald-300 font-mono text-xs tracking-wide">CommonMark & GitHub Flavored Markdown (GFM)</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 font-semibold uppercase">Universal Plaintext</span>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  <strong>What they do:</strong> The universal standard for human-readable plain text and documentation.
+                </p>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  <strong>Difference from RMD:</strong> Media is treated as an opaque string <code className="text-emerald-400 font-mono text-[11px] bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800">![caption](image.jpg)</code>. An AI agent reading GFM has zero visibility into file dimensions, scene intervals, or bounding boxes without repeatedly downloading and running inference on the full raw asset.
+                </p>
+              </div>
+            </div>
+          </div>
         </section>
 
         {/* Section 4: Automated Ingestion Pipeline */}
