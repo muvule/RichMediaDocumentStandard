@@ -1,46 +1,110 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://standards.rmd.dev/v0.1/evidence-pack.schema.json",
-  "title": "RMD Evidence Pack Contract",
-  "description": "Agent output schema for returning grounded claims backed by RMD evidence slices",
+  "title": "Rich Media Document (RMD) Grounded Evidence Pack",
+  "description": "Deterministic evidence schema delivered to multimodal LLMs and autonomous agents for zero-hallucination grounded reasoning.",
   "type": "object",
-  "required": ["query", "response", "evidence", "provenance"],
+  "required": ["documentId", "generatedAt", "agent", "claims"],
   "properties": {
-    "query": { "type": "string" },
-    "response": { "type": "string" },
-    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
-    "evidence": {
+    "documentId": { "type": "string" },
+    "documentTitle": { "type": "string" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "agent": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "model": { "type": "string" }
+      }
+    },
+    "claims": {
       "type": "array",
       "items": {
-        "type": "object",
-        "required": ["assetId", "selector", "excerpt"],
-        "properties": {
-          "assetId": { "type": "string" },
-          "annotationId": { "type": "string" },
-          "selector": { "type": "object" },
-          "excerpt": { "type": "string" },
-          "evidenceType": { "type": "string", "enum": ["transcript", "scene", "keyframe", "crop", "ocr", "summary"] },
-          "confidence": { "type": "number" },
-          "byteOffsetOrTime": { "type": "string" }
+        "$ref": "#/$defs/groundedClaim"
+      }
+    },
+    "auditTrail": {
+      "type": "object",
+      "properties": {
+        "totalEvidenceNodes": { "type": "integer" },
+        "minConfidenceObserved": { "type": "number" },
+        "cryptographicIntegrityVerified": { "type": "boolean" },
+        "provenanceIssuer": { "type": "string" }
+      }
+    }
+  },
+  "$defs": {
+    "groundedClaim": {
+      "type": "object",
+      "required": ["id", "claimText", "confidence", "source", "evidence"],
+      "properties": {
+        "id": { "type": "string" },
+        "claimText": { "type": "string" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "source": { "type": "string", "enum": ["human", "model", "extracted", "verified"] },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidenceAnchor"
+          }
         }
       }
     },
-    "provenance": {
+    "evidenceAnchor": {
       "type": "object",
-      "required": ["documentId", "generatedAt", "agent"],
+      "required": ["annotationId", "mediaId", "mediaKind", "mediaSrc"],
       "properties": {
-        "documentId": { "type": "string" },
-        "generatedAt": { "type": "string", "format": "date-time" },
-        "agent": {
-          "type": "object",
-          "required": ["name"],
-          "properties": {
-            "name": { "type": "string" },
-            "version": { "type": "string" }
-          }
+        "annotationId": { "type": "string" },
+        "mediaId": { "type": "string" },
+        "mediaKind": { "type": "string", "enum": ["image", "video", "audio", "document", "dataset", "3d"] },
+        "mediaSrc": { "type": "string" },
+        "sha256": { "type": "string" },
+        "location": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": ["type", "start", "end"],
+              "properties": {
+                "type": { "const": "temporal" },
+                "start": { "type": "number" },
+                "end": { "type": "number" },
+                "chapterId": { "type": "string" }
+              }
+            },
+            {
+              "type": "object",
+              "required": ["type", "x", "y", "width", "height"],
+              "properties": {
+                "type": { "const": "spatial" },
+                "unit": { "type": "string", "enum": ["pixel", "percent", "normalized"] },
+                "x": { "type": "number" },
+                "y": { "type": "number" },
+                "width": { "type": "number" },
+                "height": { "type": "number" }
+              }
+            },
+            {
+              "type": "object",
+              "required": ["type", "startOffset", "endOffset"],
+              "properties": {
+                "type": { "const": "text-range" },
+                "startOffset": { "type": "integer" },
+                "endOffset": { "type": "integer" },
+                "exact": { "type": "string" }
+              }
+            }
+          ]
         },
-        "c2paVerified": { "type": "boolean" },
-        "rawMediaBytesAvoided": { "type": "integer" }
+        "extractedContent": {
+          "type": "object",
+          "properties": {
+            "ocrText": { "type": "string" },
+            "transcriptSlice": { "type": "string" },
+            "label": { "type": "string" },
+            "rawSliceUrl": { "type": "string" }
+          }
+        }
       }
     }
   }

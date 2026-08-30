@@ -141,7 +141,7 @@ export const SemanticBlockSchema = z.object({
     .optional(),
   embeddingRef: z.string().optional(),
   model: z.record(z.unknown()).optional(),
-  source: z.string().optional(),
+  source: z.enum(['human', 'model', 'extracted', 'verified']).optional(),
   confidence: z.number().min(0).max(1).optional()
 });
 
@@ -235,8 +235,18 @@ export function validateDocument(doc: RMDDocument): ParseDiagnostic[] {
     });
   }
 
-  // 2. Collect and Index Media Assets
+  const ID_REGEX = /^[a-zA-Z0-9_\-.:]+$/;
+
+  // 2. Collect and Index Media Assets & Indexes
   const mediaMap = new Map<string, MediaASTNode>();
+  const indexSet = new Set<string>();
+
+  for (const node of doc.nodes) {
+    if (node.type === 'rmd.index') {
+      const idxNode = node as IndexASTNode;
+      indexSet.add(idxNode.attrs.id);
+    }
+  }
 
   for (const node of doc.nodes) {
     if (node.type === 'rmd.media') {
@@ -254,12 +264,48 @@ export function validateDocument(doc: RMDDocument): ParseDiagnostic[] {
         mediaMap.set(mediaNode.attrs.id, mediaNode);
       }
 
+      // Syntax check on ID format
+      if (!ID_REGEX.test(mediaNode.attrs.id)) {
+        diagnostics.push({
+          level: 'warning',
+          code: 'WARN_INVALID_ID_SYNTAX',
+          message: `ID '${mediaNode.attrs.id}' contains special characters outside recommended pattern [a-zA-Z0-9_\\-.:]+`,
+          range: node.range,
+          nodeId: mediaNode.attrs.id
+        });
+      }
+
       // Security check: Warn on remote unencrypted media
       if (mediaNode.attrs.src.startsWith('http://')) {
         diagnostics.push({
           level: 'warning',
           code: 'WARN_INSECURE_MEDIA_URL',
           message: `Media source '${mediaNode.attrs.src}' uses unencrypted HTTP protocol. Use HTTPS.`,
+          range: node.range,
+          nodeId: mediaNode.attrs.id
+        });
+      }
+
+      // Integrity check: Warn on external remote media missing SHA-256
+      if (
+        (mediaNode.attrs.src.startsWith('http://') || mediaNode.attrs.src.startsWith('https://')) &&
+        !mediaNode.attrs.sha256
+      ) {
+        diagnostics.push({
+          level: 'warning',
+          code: 'WARN_MISSING_SHA256',
+          message: `Remote media '${mediaNode.attrs.id}' lacks a 'sha256' cryptographic hash for tamper-evident verification.`,
+          range: node.range,
+          nodeId: mediaNode.attrs.id
+        });
+      }
+
+      // Embedding reference check
+      if (mediaNode.attrs.retrieval?.embeddingRef && !indexSet.has(mediaNode.attrs.retrieval.embeddingRef)) {
+        diagnostics.push({
+          level: 'warning',
+          code: 'WARN_UNKNOWN_INDEX_REF',
+          message: `Media '${mediaNode.attrs.id}' references undeclared embedding index '${mediaNode.attrs.retrieval.embeddingRef}'.`,
           range: node.range,
           nodeId: mediaNode.attrs.id
         });
@@ -282,7 +328,7 @@ export function validateDocument(doc: RMDDocument): ParseDiagnostic[] {
       continue;
     }
 
-    // Check duplicate ID for all blocks
+    // Check duplicate ID and ID syntax for all blocks
     if ('attrs' in node && (node.attrs as { id?: string }).id) {
       const blockId = (node.attrs as { id: string }).id;
       if (node.type !== 'rmd.media') {
@@ -296,6 +342,16 @@ export function validateDocument(doc: RMDDocument): ParseDiagnostic[] {
           });
         } else {
           seenIds.add(blockId);
+        }
+
+        if (!ID_REGEX.test(blockId)) {
+          diagnostics.push({
+            level: 'warning',
+            code: 'WARN_INVALID_ID_SYNTAX',
+            message: `ID '${blockId}' contains characters outside pattern [a-zA-Z0-9_\\-.:]+`,
+            range: node.range,
+            nodeId: blockId
+          });
         }
       }
     }
@@ -311,6 +367,16 @@ export function validateDocument(doc: RMDDocument): ParseDiagnostic[] {
           level: 'error',
           code: 'ERR_UNKNOWN_TARGET',
           message: `Annotation '${annNode.attrs.id}' targets non-existent media asset '${targetId}'.`,
+          range: node.range,
+          nodeId: annNode.attrs.id
+        });
+      }
+
+      if (annNode.attrs.confidence !== undefined && (annNode.attrs.confidence < 0 || annNode.attrs.confidence > 1)) {
+        diagnostics.push({
+          level: 'error',
+          code: 'ERR_INVALID_CONFIDENCE_RANGE',
+          message: `Annotation '${annNode.attrs.id}' confidence must be between 0.0 and 1.0 (received ${annNode.attrs.confidence}).`,
           range: node.range,
           nodeId: annNode.attrs.id
         });
@@ -365,6 +431,16 @@ export function validateDocument(doc: RMDDocument): ParseDiagnostic[] {
           level: 'error',
           code: 'ERR_UNKNOWN_TARGET',
           message: `Semantic block '${semNode.attrs.id}' targets non-existent media asset '${targetId}'.`,
+          range: node.range,
+          nodeId: semNode.attrs.id
+        });
+      }
+
+      if (semNode.attrs.confidence !== undefined && (semNode.attrs.confidence < 0 || semNode.attrs.confidence > 1)) {
+        diagnostics.push({
+          level: 'error',
+          code: 'ERR_INVALID_CONFIDENCE_RANGE',
+          message: `Semantic block '${semNode.attrs.id}' confidence must be between 0.0 and 1.0 (received ${semNode.attrs.confidence}).`,
           range: node.range,
           nodeId: semNode.attrs.id
         });

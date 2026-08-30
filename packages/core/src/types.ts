@@ -123,6 +123,8 @@ export interface MediaBlockAttrs {
   [key: string]: unknown;
 }
 
+export type EvidenceSource = 'human' | 'model' | 'extracted' | 'verified';
+
 export interface AnnotationBlockAttrs {
   id: string;
   target: string;
@@ -131,7 +133,7 @@ export interface AnnotationBlockAttrs {
   body?: unknown;
   claim?: string;
   confidence?: number;
-  source?: 'human' | 'model' | 'extracted' | 'verified';
+  source?: EvidenceSource;
   createdBy?: {
     name?: string;
     version?: string;
@@ -170,7 +172,7 @@ export interface SemanticBlockAttrs {
     version?: string;
     [key: string]: unknown;
   };
-  source?: string;
+  source?: EvidenceSource;
   confidence?: number;
   [key: string]: unknown;
 }
@@ -192,6 +194,14 @@ export interface ProvenanceBlockAttrs {
   [key: string]: unknown;
 }
 
+export interface AgentBudget {
+  maxEvidenceSlices?: number;
+  maxContextTokens?: number;
+  maxCostUsd?: number;
+  allowedModalities?: MediaKind[];
+  [key: string]: unknown;
+}
+
 export interface AgentBlockAttrs {
   id: string;
   mode?: string;
@@ -203,11 +213,7 @@ export interface AgentBlockAttrs {
     schema?: string;
     [key: string]: unknown;
   };
-  budget?: {
-    maxEvidenceSlices?: number;
-    maxContextTokens?: number;
-    [key: string]: unknown;
-  };
+  budget?: AgentBudget;
   [key: string]: unknown;
 }
 

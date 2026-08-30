@@ -1,0 +1,278 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://standards.rmd.dev/v0.1/rmd-source-blocks.schema.json",
+  "title": "Rich Media Document (RMD) Source Blocks Schema",
+  "description": "JSON Schemas for raw YAML payloads enclosed in RMD typed code fences (```rmd:* ... ```)",
+  "$defs": {
+    "idPattern": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_\\-.:]+$",
+      "description": "Standard identifier grammar: letters, digits, underscores, dashes, dots, or colons."
+    },
+    "evidenceSource": {
+      "type": "string",
+      "enum": ["human", "model", "extracted", "verified"],
+      "description": "The origin of the assertion or claim."
+    },
+    "spatialSelector": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["xywh", "polygon", "normalized-xywh"] },
+        "unit": { "enum": ["pixel", "percent", "normalized"], "default": "pixel" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number", "minimum": 0 },
+        "height": { "type": "number", "minimum": 0 },
+        "points": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": { "type": "number" },
+            "minItems": 2,
+            "maxItems": 2
+          }
+        }
+      }
+    },
+    "temporalSelector": {
+      "type": "object",
+      "required": ["type", "start", "end"],
+      "properties": {
+        "type": { "const": "temporal" },
+        "start": { "type": "number", "minimum": 0 },
+        "end": { "type": "number", "minimum": 0 },
+        "frameStart": { "type": "integer", "minimum": 0 },
+        "frameEnd": { "type": "integer", "minimum": 0 },
+        "timebase": { "type": "string" },
+        "chapterId": { "type": "string" }
+      }
+    },
+    "textRangeSelector": {
+      "type": "object",
+      "required": ["type", "startOffset", "endOffset"],
+      "properties": {
+        "type": { "const": "text-range" },
+        "startOffset": { "type": "integer", "minimum": 0 },
+        "endOffset": { "type": "integer", "minimum": 0 },
+        "exact": { "type": "string" },
+        "prefix": { "type": "string" },
+        "suffix": { "type": "string" }
+      }
+    },
+    "compositeSelector": {
+      "type": "object",
+      "required": ["type", "chain"],
+      "properties": {
+        "type": { "const": "composite" },
+        "chain": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/selector" }
+        }
+      }
+    },
+    "selector": {
+      "oneOf": [
+        { "$ref": "#/$defs/spatialSelector" },
+        { "$ref": "#/$defs/temporalSelector" },
+        { "$ref": "#/$defs/textRangeSelector" },
+        { "$ref": "#/$defs/compositeSelector" }
+      ]
+    },
+    "mediaBlock": {
+      "type": "object",
+      "required": ["id", "kind", "src", "mime"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idPattern" },
+        "kind": { "enum": ["image", "video", "audio", "document", "dataset", "3d"] },
+        "src": { "type": "string", "minLength": 1 },
+        "mime": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" },
+        "byteSize": { "type": "integer", "minimum": 0 },
+        "duration": { "type": "number", "minimum": 0 },
+        "width": { "type": "integer", "minimum": 0 },
+        "height": { "type": "integer", "minimum": 0 },
+        "poster": { "type": "string" },
+        "captions": { "type": "string" },
+        "transcript": { "type": "string" },
+        "license": { "type": "string" },
+        "provenance": { "type": "object" },
+        "understanding": { "type": "object" },
+        "retrieval": {
+          "type": "object",
+          "properties": {
+            "priority": { "enum": ["high", "normal", "low"] },
+            "preferredEvidence": { "type": "array", "items": { "type": "string" } },
+            "embeddingRef": { "type": "string" }
+          }
+        }
+      }
+    },
+    "annotationBlock": {
+      "type": "object",
+      "required": ["id", "target", "type"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idPattern" },
+        "target": { "$ref": "#/$defs/idPattern" },
+        "type": { "type": "string", "minLength": 1 },
+        "selector": { "$ref": "#/$defs/selector" },
+        "body": {
+          "oneOf": [
+            { "type": "string" },
+            {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string" },
+                "text": { "type": "string" },
+                "action": { "type": "string" },
+                "reason": { "type": "string" }
+              }
+            }
+          ]
+        },
+        "claim": { "type": "string" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "source": { "$ref": "#/$defs/evidenceSource" },
+        "createdBy": {
+          "oneOf": [
+            { "type": "string" },
+            {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "version": { "type": "string" }
+              }
+            }
+          ]
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "semanticBlock": {
+      "type": "object",
+      "required": ["id", "target"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idPattern" },
+        "target": { "$ref": "#/$defs/idPattern" },
+        "caption": { "type": "string" },
+        "summary": { "type": "string" },
+        "ocr": { "type": "array", "items": { "type": "object" } },
+        "transcript": { "type": "array", "items": { "type": "object" } },
+        "entities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "label"],
+            "properties": {
+              "id": { "$ref": "#/$defs/idPattern" },
+              "type": { "type": "string" },
+              "label": { "type": "string" },
+              "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+            }
+          }
+        },
+        "topics": { "type": "array", "items": { "type": "string" } },
+        "relationships": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["from", "to", "type"],
+            "properties": {
+              "from": { "$ref": "#/$defs/idPattern" },
+              "to": { "$ref": "#/$defs/idPattern" },
+              "type": { "type": "string" }
+            }
+          }
+        },
+        "embeddingRef": { "type": "string" },
+        "model": { "type": "object" },
+        "source": { "$ref": "#/$defs/evidenceSource" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "provenanceBlock": {
+      "type": "object",
+      "required": ["id", "target"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idPattern" },
+        "target": { "$ref": "#/$defs/idPattern" },
+        "creator": { "type": "string" },
+        "license": { "type": "string" },
+        "c2pa": { "type": "string" },
+        "history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["action"],
+            "properties": {
+              "action": { "type": "string" },
+              "at": { "type": "string" },
+              "actor": { "type": "string" },
+              "parameters": { "type": "object" }
+            }
+          }
+        }
+      }
+    },
+    "agentBlock": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idPattern" },
+        "mode": { "type": "string" },
+        "priority": { "enum": ["high", "normal", "low"] },
+        "instructions": { "type": "array", "items": { "type": "string" } },
+        "tools": { "type": "array", "items": { "type": "string" } },
+        "output": {
+          "type": "object",
+          "properties": {
+            "format": { "type": "string" },
+            "schema": { "type": "string" }
+          }
+        },
+        "budget": {
+          "type": "object",
+          "properties": {
+            "maxEvidenceSlices": { "type": "integer", "minimum": 0 },
+            "maxContextTokens": { "type": "integer", "minimum": 0 },
+            "maxCostUsd": { "type": "number", "minimum": 0 },
+            "allowedModalities": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "schemaBlock": {
+      "type": "object",
+      "required": ["id", "type"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idPattern" },
+        "type": { "type": "string" },
+        "src": { "type": "string" },
+        "schema": { "type": "object" },
+        "description": { "type": "string" }
+      }
+    },
+    "indexBlock": {
+      "type": "object",
+      "required": ["id", "target", "artifacts"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idPattern" },
+        "target": { "type": "string" },
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["kind", "src"],
+            "properties": {
+              "kind": { "type": "string" },
+              "src": { "type": "string" },
+              "format": { "type": "string" },
+              "sha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

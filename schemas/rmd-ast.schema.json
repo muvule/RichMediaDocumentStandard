@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://standards.rmd.dev/v0.1/rmd-ast.schema.json",
+  "title": "Rich Media Document (RMD) AST Schema",
+  "description": "JSON Schema specification for the parsed in-memory RMD Abstract Syntax Tree (AST)",
+  "type": "object",
+  "required": ["frontMatter", "nodes", "diagnostics"],
+  "properties": {
+    "frontMatter": {
+      "type": "object",
+      "required": ["rmd", "id", "title"],
+      "properties": {
+        "rmd": { "type": "string", "pattern": "^\\d+\\.\\d+(\\.\\d+)?$" },
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-.:]+$" },
+        "title": { "type": "string", "minLength": 1 },
+        "language": { "type": "string", "default": "en" },
+        "created": { "type": "string", "format": "date-time" },
+        "updated": { "type": "string", "format": "date-time" },
+        "authors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": { "type": "string" },
+              "role": { "type": "string" },
+              "email": { "type": "string" }
+            }
+          }
+        },
+        "license": { "type": "string" },
+        "contentType": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "defaultMediaPolicy": {
+          "type": "string",
+          "enum": ["stream", "download", "defer", "offline"]
+        }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/astNode"
+      }
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/parseDiagnostic"
+      }
+    }
+  },
+  "$defs": {
+    "sourceLocation": {
+      "type": "object",
+      "required": ["line", "column", "offset"],
+      "properties": {
+        "line": { "type": "integer", "minimum": 1 },
+        "column": { "type": "integer", "minimum": 1 },
+        "offset": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "sourceRange": {
+      "type": "object",
+      "required": ["start", "end"],
+      "properties": {
+        "start": { "$ref": "#/$defs/sourceLocation" },
+        "end": { "$ref": "#/$defs/sourceLocation" }
+      }
+    },
+    "parseDiagnostic": {
+      "type": "object",
+      "required": ["level", "code", "message"],
+      "properties": {
+        "level": { "enum": ["error", "warning", "info"] },
+        "code": { "type": "string" },
+        "message": { "type": "string" },
+        "range": { "$ref": "#/$defs/sourceRange" },
+        "nodeId": { "type": "string" }
+      }
+    },
+    "astNode": {
+      "type": "object",
+      "required": ["id", "type", "range", "raw"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": {
+          "enum": [
+            "rmd.markdown",
+            "rmd.media",
+            "rmd.annotation",
+            "rmd.semantic",
+            "rmd.provenance",
+            "rmd.agent",
+            "rmd.schema",
+            "rmd.index",
+            "rmd.extension"
+          ]
+        },
+        "range": { "$ref": "#/$defs/sourceRange" },
+        "raw": { "type": "string" },
+        "attrs": { "type": "object" },
+        "errors": { "type": "array", "items": { "$ref": "#/$defs/parseDiagnostic" } }
+      }
+    }
+  }
+}
