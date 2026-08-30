@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://standards.rmd.dev/v0.1/evidence-pack.schema.json",
+  "title": "RMD Evidence Pack Contract",
+  "description": "Agent output schema for returning grounded claims backed by RMD evidence slices",
+  "type": "object",
+  "required": ["query", "response", "evidence", "provenance"],
+  "properties": {
+    "query": { "type": "string" },
+    "response": { "type": "string" },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["assetId", "selector", "excerpt"],
+        "properties": {
+          "assetId": { "type": "string" },
+          "annotationId": { "type": "string" },
+          "selector": { "type": "object" },
+          "excerpt": { "type": "string" },
+          "evidenceType": { "type": "string", "enum": ["transcript", "scene", "keyframe", "crop", "ocr", "summary"] },
+          "confidence": { "type": "number" },
+          "byteOffsetOrTime": { "type": "string" }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["documentId", "generatedAt", "agent"],
+      "properties": {
+        "documentId": { "type": "string" },
+        "generatedAt": { "type": "string", "format": "date-time" },
+        "agent": {
+          "type": "object",
+          "required": ["name"],
+          "properties": {
+            "name": { "type": "string" },
+            "version": { "type": "string" }
+          }
+        },
+        "c2paVerified": { "type": "boolean" },
+        "rawMediaBytesAvoided": { "type": "integer" }
+      }
+    }
+  }
+}

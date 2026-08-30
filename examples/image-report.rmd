@@ -1,0 +1,113 @@
+---
+rmd: 0.1
+id: doc:solar-roof-inspection-2026
+title: Commercial Rooftop Solar Array Inspection
+language: en
+authors:
+  - name: Drone Inspection Team Bravo
+    role: Field Surveyor
+created: 2026-08-17T09:15:00-07:00
+updated: 2026-08-17T11:30:00-07:00
+license: CC-BY-4.0
+contentType: inspection-report
+tags: [solar, drone, thermal, structural, inspection]
+defaultMediaPolicy: defer
+---
+
+# Commercial Rooftop Solar Array Inspection Report
+
+This inspection report covers the aerial drone photogrammetry and anomaly assessment for Sector 4 of the commercial solar facility. Multiple thermal hotspots and physical micro-fractures were detected during the automated flight pass.
+
+```rmd:media
+id: roof-ortho-04
+kind: image
+src: ./assets/roof-orthomosaic-s4.jpg
+mime: image/jpeg
+sha256: 7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069
+byteSize: 18450200
+width: 6000
+height: 4000
+license: CC-BY-4.0
+understanding:
+  summary: "High-resolution orthomosaic of Sector 4 solar array showing 144 panel modules."
+retrieval:
+  priority: high
+  preferredEvidence: [crop, ocr]
+```
+
+## Identified Anomalies and Structural Faults
+
+Visual and thermal inspection detected severe surface degradation and micro-fractures on Panel Array B-12.
+
+```rmd:annotation
+id: ann-damaged-panel-01
+target: roof-ortho-04
+type: object-region
+selector:
+  type: xywh
+  unit: pixel
+  x: 1840
+  y: 1120
+  width: 580
+  height: 420
+body:
+  label: micro-fractured-solar-cell
+  severity: critical
+  temperatureDeltaC: +18.4
+claim: "Severe thermal anomaly and glass fracture detected on Module B-12 (Cell 4)."
+confidence: 0.97
+source: model
+createdBy:
+  name: solar-defect-detector
+  version: 2.4.0
+createdAt: 2026-08-17T10:02:00-07:00
+```
+
+```rmd:annotation
+id: ann-serial-ocr-01
+target: roof-ortho-04
+type: text-region
+selector:
+  type: xywh
+  unit: pixel
+  x: 2320
+  y: 1140
+  width: 140
+  height: 45
+body:
+  label: barcode-serial
+  text: "SN-PV-99482-B12"
+claim: "Serial barcode identified as SN-PV-99482-B12."
+confidence: 0.99
+source: extracted
+```
+
+```rmd:semantic
+id: sem-roof-analysis-01
+target: roof-ortho-04
+caption: "Sector 4 solar array with identified cell fracture on Module B-12."
+summary: "Defect inspection identified 1 critical module failure (B-12) requiring immediate string isolation and maintenance dispatch."
+entities:
+  - id: ent-mod-b12
+    type: equipment
+    label: Photovoltaic Module B-12
+    confidence: 0.99
+  - id: ent-fracture
+    type: defect
+    label: Thermal Micro-fracture
+    confidence: 0.97
+topics: [photovoltaic, hardware-failure, maintenance-dispatch, energy-loss]
+relationships:
+  - from: ann-damaged-panel-01
+    to: ent-mod-b12
+    type: affects
+model:
+  name: pv-analyzer-v3
+  version: 3.1.0
+source: model
+confidence: 0.96
+```
+
+## Recommended Actions
+1. Isolate DC combiner box 4-B immediately.
+2. Replace Module SN-PV-99482-B12 before next billing cycle.

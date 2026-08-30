@@ -1,0 +1,23 @@
+{
+  "name": "rmd-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Rich Media Document (RMD) Standard Reference Implementation",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace=@rmd/core && npm run build --workspace=@rmd/cli && npm run build --workspace=@rmd/playground",
+    "test": "vitest run",
+    "benchmark": "vitest run benchmarks/benchmark.test.ts",
+    "playground": "npm run dev --workspace=@rmd/playground"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "typescript": "^5.4.5",
+    "vitest": "^1.6.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

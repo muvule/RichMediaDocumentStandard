@@ -1,0 +1,94 @@
+---
+rmd: 0.1
+id: doc:ai-systems-podcast-ep42
+title: "The Agentic Future Podcast - Ep. 42: Media Formats for Autonomous AI"
+language: en
+authors:
+  - name: Sarah Lin
+    role: Host
+  - name: Marcus Vance
+    role: Guest Architect
+created: 2026-08-17T16:00:00-07:00
+updated: 2026-08-17T18:00:00-07:00
+license: CC-BY-NC-4.0
+contentType: podcast-notes
+tags: [podcast, ai-agents, multimodal, media-standards, c2pa]
+---
+
+# The Agentic Future Podcast — Episode 42
+
+In this episode, Sarah and Marcus discuss why multimodal LLM agents struggle with raw audio/video files and how the RMD standard enables sub-second evidence retrieval.
+
+```rmd:media
+id: podcast-ep42-audio
+kind: audio
+src: ./assets/ep42-agentic-media.mp3
+mime: audio/mpeg
+sha256: 4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a
+byteSize: 68400120
+duration: 2840.5
+transcript: ./assets/ep42.transcript.json
+license: CC-BY-NC-4.0
+understanding:
+  summary: "Discussion of multi-modal agent latency, audio segmentation, and the RMD evidence layer."
+retrieval:
+  priority: normal
+  preferredEvidence: [transcript, audio-slice]
+```
+
+## Key Discussion Points & Quotes
+
+Marcus explains the core performance bottleneck when feeding 2-hour audio files to multi-modal reasoning models.
+
+```rmd:annotation
+id: ann-quote-evidence-funnel
+target: podcast-ep42-audio
+type: quote
+selector:
+  type: temporal
+  start: 542.0
+  end: 588.5
+body:
+  speaker: "Marcus Vance"
+  text: "Agents shouldn't re-transcribe or re-decode a 70MB MP3 every time a user asks a factual question. Give the agent an index with typed selectors first."
+claim: "Marcus highlights the token and latency inefficiency of repeatedly decoding audio in agent loops."
+confidence: 0.98
+source: verified
+```
+
+```rmd:annotation
+id: ann-quote-provenance
+target: podcast-ep42-audio
+type: topic-anchor
+selector:
+  type: temporal
+  start: 1210.0
+  end: 1340.0
+body:
+  topic: "C2PA and Cryptographic Provenance"
+  summary: "Debate on whether AI training data should mandate cryptographic provenance manifests."
+confidence: 0.95
+source: model
+```
+
+```rmd:semantic
+id: sem-podcast-entities
+target: podcast-ep42-audio
+caption: "Speaker diarization and topic segmentation for Episode 42."
+entities:
+  - id: ent-speaker-sarah
+    type: person
+    label: Sarah Lin (Host)
+  - id: ent-speaker-marcus
+    type: person
+    label: Marcus Vance (System Architect)
+  - id: ent-concept-rmd
+    type: concept
+    label: Rich Media Document Standard
+topics: [agentic-coding, context-window-optimization, multimodal-inference, c2pa]
+relationships:
+  - from: ann-quote-evidence-funnel
+    to: ent-concept-rmd
+    type: describes
+source: extracted
+```

@@ -1,0 +1,149 @@
+---
+rmd: 0.1
+id: doc:coastal-erosion-survey-2026
+title: Southern Shoreline Coastal Erosion Field Survey
+language: en
+authors:
+  - name: Dr. Elena Vance
+    role: Coastal Geologist
+created: 2026-08-17T09:30:00-07:00
+updated: 2026-08-17T14:15:00-07:00
+license: CC-BY-4.0
+contentType: field-survey
+tags: [coastal-erosion, drone-survey, sediment-transport, seawall-risk]
+defaultMediaPolicy: defer
+---
+
+# Southern Shoreline Coastal Erosion Field Survey
+
+Field survey conducted post-storm along the southern bluff perimeter. This document pairs 4K aerial photogrammetry with temporal scene indexes, geological annotations, and C2PA provenance tracking.
+
+```rmd:media
+id: shoreline-survey-video
+kind: video
+src: ./assets/shoreline-survey-4k.mp4
+mime: video/mp4
+sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+byteSize: 1420500000
+duration: 742.36
+width: 3840
+height: 2160
+poster: ./assets/shoreline-poster.jpg
+transcript: ./assets/shoreline-survey.transcript.json
+captions: ./assets/shoreline-survey.vtt
+license: CC-BY-4.0
+provenance:
+  c2pa: ./assets/shoreline-survey.c2pa.json
+understanding:
+  summary: "Comprehensive aerial video pass over southern seawall and active erosion scarp."
+  scenes:
+    - id: scene-001
+      start: 0.0
+      end: 38.4
+      summary: "Wide flyover of southern concrete seawall foundation."
+      entities: [seawall, revetment, high-tide-line]
+    - id: scene-002
+      start: 38.4
+      end: 112.5
+      summary: "Detailed orbital scan of the active 12-meter cliff scarp collapse."
+      entities: [erosion-scarp, sandstone-collapse, talus-deposit]
+    - id: scene-003
+      start: 112.5
+      end: 240.0
+      summary: "Sediment wash-out zone near southern residential access road."
+      entities: [sediment-plume, access-road, drainage-culvert]
+retrieval:
+  priority: high
+  preferredEvidence: [scene, temporal-slice, transcript]
+  embeddingRef: rmd://embeddings/shoreline-survey-video
+```
+
+## Critical Geological Observations
+
+During the second orbital pass (38.4s to 112.5s), significant rotational cliff slump was recorded.
+
+```rmd:annotation
+id: ann-scarp-collapse-01
+target: shoreline-survey-video
+type: evidence
+selector:
+  type: temporal
+  start: 38.4
+  end: 76.2
+body: "Primary erosion scarp shows fresh shear fracture with 450 m3 estimated talus loss."
+claim: "Active bluff collapse exposing uncompacted sandstone between 38.4s and 76.2s."
+confidence: 0.94
+source: verified
+createdBy:
+  name: Dr. Elena Vance
+createdAt: 2026-08-17T11:00:00-07:00
+```
+
+```rmd:annotation
+id: ann-culvert-compromise-02
+target: shoreline-survey-video
+type: spatial-temporal
+selector:
+  type: composite
+  chain:
+    - type: temporal
+      start: 140.0
+      end: 185.0
+    - type: xywh
+      unit: pixel
+      x: 1420
+      y: 860
+      width: 900
+      height: 650
+body: "Drainage culvert discharge undermining access road embankment."
+claim: "Undermining of access road foundation visible at culvert outlet."
+confidence: 0.91
+source: model
+```
+
+```rmd:semantic
+id: sem-shoreline-threat-assessment
+target: shoreline-survey-video
+caption: "Coastal erosion survey identifying critical bluff retreat rate."
+summary: "Bluff retreat rate has accelerated to 1.8 meters/year following winter storm events, posing imminent risk to southern perimeter access."
+entities:
+  - id: ent-bluff-scarp
+    type: geological-feature
+    label: Torrey Sandstone Bluff Scarp
+    confidence: 0.98
+  - id: ent-culvert
+    type: infrastructure
+    label: County Drainage Culvert #14
+    confidence: 0.92
+topics: [coastal-erosion, infrastructure-risk, bluff-stability, drone-telemetry]
+relationships:
+  - from: ann-scarp-collapse-01
+    to: ent-bluff-scarp
+    type: locates
+  - from: scene-002
+    to: sem-shoreline-threat-assessment
+    type: supports
+model:
+  name: coastal-risk-net
+  version: 1.0.4
+source: model
+confidence: 0.93
+```
+
+```rmd:provenance
+id: prov-drone-telemetry-01
+target: shoreline-survey-video
+creator: Drone Pilot ID #402 (GeoSurvey Corp)
+license: CC-BY-4.0
+c2pa: ./assets/shoreline-survey.c2pa.json
+history:
+  - action: captured
+    at: 2026-08-17T09:30:00-07:00
+    actor: Matrice-300-RTK
+  - action: stitched-and-color-corrected
+    at: 2026-08-17T10:15:00-07:00
+    actor: DaVinci-Resolve-Studio
+  - action: indexed-for-rmd
+    at: 2026-08-17T10:45:00-07:00
+    actor: rmd-indexer-v0.1
+```

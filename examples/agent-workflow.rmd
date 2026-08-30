@@ -1,0 +1,87 @@
+---
+rmd: 0.1
+id: doc:agent-reasoning-workflow-demo
+title: Autonomous Multi-Modal Agent Workflow Specification
+language: en
+authors:
+  - name: Autonomous Agent Coordinator
+    role: System
+created: 2026-08-17T18:00:00-07:00
+updated: 2026-08-17T18:30:00-07:00
+license: Apache-2.0
+contentType: agent-workflow
+tags: [agent-spec, evidence-retrieval, output-contract, tool-hints]
+---
+
+# Autonomous Multi-Modal Agent Workflow
+
+This document specifies retrieval contracts and execution instructions for AI reasoning agents evaluating multi-modal incident reports.
+
+```rmd:agent
+id: agent-retrieval-policy-01
+mode: retrieval
+priority: high
+instructions:
+  - "Always inspect the semantic manifest and scene summaries before requesting raw media byte ranges."
+  - "When citing factual claims, always attach the specific temporal or spatial selector ID in your evidence pack."
+  - "If confidence of an annotation is below 0.85, flag it as unverified."
+tools:
+  - "rmd:resolve-evidence-slice"
+  - "rmd:search-entities"
+  - "rmd:get-transcript-range"
+output:
+  format: json
+  schema: evidence-pack/v1
+budget:
+  maxEvidenceSlices: 3
+  maxContextTokens: 2000
+```
+
+```rmd:schema
+id: evidence-pack/v1
+type: json-schema
+src: ../schemas/evidence-pack.schema.json
+description: "Output contract for agent reasoning packs returned to downstream verification pipelines."
+```
+
+```rmd:media
+id: incident-security-cam-08
+kind: video
+src: ./assets/incident-gate-cam.mp4
+mime: video/mp4
+sha256: 8c3b9911e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b
+byteSize: 314000000
+duration: 360.0
+width: 1920
+height: 1080
+understanding:
+  summary: "Security camera footage of loading bay perimeter gate during weather alert."
+```
+
+```rmd:annotation
+id: ann-gate-breach-event
+target: incident-security-cam-08
+type: security-event
+selector:
+  type: temporal
+  start: 114.2
+  end: 128.8
+body:
+  severity: warning
+  eventType: perimeter-door-unlatched
+claim: "Loading bay perimeter door was blown unlatched between 114.2s and 128.8s."
+confidence: 0.96
+source: model
+```
+
+```rmd:index
+id: idx-incident-indexes
+target: doc
+artifacts:
+  - kind: scene-index
+    src: ./indexes/incident-scenes.json
+    format: json
+  - kind: embedding-index
+    src: ./indexes/incident-embeddings.json
+    format: json
+```

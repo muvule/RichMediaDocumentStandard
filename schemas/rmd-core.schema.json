@@ -1,0 +1,380 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://standards.rmd.dev/v0.1/rmd-core.schema.json",
+  "title": "Rich Media Document (RMD) Core Schema",
+  "description": "Standard schema specification for RMD documents and typed blocks (v0.1)",
+  "type": "object",
+  "required": ["frontMatter", "nodes"],
+  "properties": {
+    "frontMatter": {
+      "type": "object",
+      "required": ["rmd", "id", "title"],
+      "properties": {
+        "rmd": { "type": "string", "pattern": "^\\d+\\.\\d+(\\.\\d+)?$" },
+        "id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "language": { "type": "string", "default": "en" },
+        "created": { "type": "string", "format": "date-time" },
+        "updated": { "type": "string", "format": "date-time" },
+        "authors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": { "type": "string" },
+              "role": { "type": "string" },
+              "email": { "type": "string" }
+            }
+          }
+        },
+        "license": { "type": "string" },
+        "contentType": { "type": "string" },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "defaultMediaPolicy": {
+          "type": "string",
+          "enum": ["stream", "download", "defer", "offline"]
+        }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/rmdNode"
+      }
+    }
+  },
+  "$defs": {
+    "sourceLocation": {
+      "type": "object",
+      "required": ["line", "column", "offset"],
+      "properties": {
+        "line": { "type": "integer", "minimum": 1 },
+        "column": { "type": "integer", "minimum": 1 },
+        "offset": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "sourceRange": {
+      "type": "object",
+      "required": ["start", "end"],
+      "properties": {
+        "start": { "$ref": "#/$defs/sourceLocation" },
+        "end": { "$ref": "#/$defs/sourceLocation" }
+      }
+    },
+    "temporalSelector": {
+      "type": "object",
+      "required": ["type", "start", "end"],
+      "properties": {
+        "type": { "const": "temporal" },
+        "start": { "type": "number", "minimum": 0 },
+        "end": { "type": "number", "minimum": 0 },
+        "frameStart": { "type": "integer", "minimum": 0 },
+        "frameEnd": { "type": "integer", "minimum": 0 },
+        "timebase": { "type": "string" },
+        "chapterId": { "type": "string" }
+      }
+    },
+    "spatialSelector": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["xywh", "polygon", "normalized-xywh"] },
+        "unit": { "enum": ["pixel", "percent", "normalized"], "default": "pixel" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number", "minimum": 0 },
+        "height": { "type": "number", "minimum": 0 },
+        "points": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": { "type": "number" },
+            "minItems": 2,
+            "maxItems": 2
+          }
+        }
+      }
+    },
+    "textRangeSelector": {
+      "type": "object",
+      "required": ["type", "startOffset", "endOffset"],
+      "properties": {
+        "type": { "const": "text-range" },
+        "startOffset": { "type": "integer", "minimum": 0 },
+        "endOffset": { "type": "integer", "minimum": 0 },
+        "exact": { "type": "string" },
+        "prefix": { "type": "string" },
+        "suffix": { "type": "string" }
+      }
+    },
+    "compositeSelector": {
+      "type": "object",
+      "required": ["type", "chain"],
+      "properties": {
+        "type": { "const": "composite" },
+        "chain": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/selector" },
+          "minItems": 1
+        }
+      }
+    },
+    "selector": {
+      "oneOf": [
+        { "$ref": "#/$defs/temporalSelector" },
+        { "$ref": "#/$defs/spatialSelector" },
+        { "$ref": "#/$defs/textRangeSelector" },
+        { "$ref": "#/$defs/compositeSelector" }
+      ]
+    },
+    "mediaNode": {
+      "type": "object",
+      "required": ["id", "type", "attrs"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "const": "rmd.media" },
+        "range": { "$ref": "#/$defs/sourceRange" },
+        "attrs": {
+          "type": "object",
+          "required": ["id", "kind", "src", "mime"],
+          "properties": {
+            "id": { "type": "string" },
+            "kind": { "enum": ["image", "video", "audio", "document", "dataset", "3d"] },
+            "src": { "type": "string" },
+            "mime": { "type": "string" },
+            "sha256": { "type": "string" },
+            "byteSize": { "type": "integer", "minimum": 0 },
+            "duration": { "type": "number", "minimum": 0 },
+            "width": { "type": "integer", "minimum": 0 },
+            "height": { "type": "integer", "minimum": 0 },
+            "poster": { "type": "string" },
+            "captions": { "type": "string" },
+            "transcript": { "type": "string" },
+            "license": { "type": "string" },
+            "provenance": { "type": "object" },
+            "understanding": { "type": "object" },
+            "retrieval": { "type": "object" }
+          }
+        }
+      }
+    },
+    "annotationNode": {
+      "type": "object",
+      "required": ["id", "type", "attrs"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "const": "rmd.annotation" },
+        "range": { "$ref": "#/$defs/sourceRange" },
+        "attrs": {
+          "type": "object",
+          "required": ["id", "target", "type"],
+          "properties": {
+            "id": { "type": "string" },
+            "target": { "type": "string" },
+            "type": { "type": "string" },
+            "selector": { "$ref": "#/$defs/selector" },
+            "body": {},
+            "claim": { "type": "string" },
+            "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+            "source": { "enum": ["human", "model", "extracted", "verified"] },
+            "createdBy": { "type": "object" },
+            "createdAt": { "type": "string" }
+          }
+        }
+      }
+    },
+    "semanticNode": {
+      "type": "object",
+      "required": ["id", "type", "attrs"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "const": "rmd.semantic" },
+        "range": { "$ref": "#/$defs/sourceRange" },
+        "attrs": {
+          "type": "object",
+          "required": ["id", "target"],
+          "properties": {
+            "id": { "type": "string" },
+            "target": { "type": "string" },
+            "caption": { "type": "string" },
+            "summary": { "type": "string" },
+            "ocr": { "type": "array" },
+            "transcript": { "type": "array" },
+            "entities": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["id", "label"],
+                "properties": {
+                  "id": { "type": "string" },
+                  "type": { "type": "string" },
+                  "label": { "type": "string" },
+                  "confidence": { "type": "number" }
+                }
+              }
+            },
+            "topics": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "relationships": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["from", "to", "type"],
+                "properties": {
+                  "from": { "type": "string" },
+                  "to": { "type": "string" },
+                  "type": { "type": "string" }
+                }
+              }
+            },
+            "embeddingRef": { "type": "string" },
+            "model": { "type": "object" },
+            "source": { "type": "string" },
+            "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        }
+      }
+    },
+    "provenanceNode": {
+      "type": "object",
+      "required": ["id", "type", "attrs"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "const": "rmd.provenance" },
+        "attrs": {
+          "type": "object",
+          "required": ["id", "target"],
+          "properties": {
+            "id": { "type": "string" },
+            "target": { "type": "string" },
+            "creator": { "type": "string" },
+            "license": { "type": "string" },
+            "c2pa": { "type": "string" },
+            "history": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["action"],
+                "properties": {
+                  "action": { "type": "string" },
+                  "at": { "type": "string" },
+                  "actor": { "type": "string" },
+                  "parameters": { "type": "object" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "agentNode": {
+      "type": "object",
+      "required": ["id", "type", "attrs"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "const": "rmd.agent" },
+        "attrs": {
+          "type": "object",
+          "required": ["id"],
+          "properties": {
+            "id": { "type": "string" },
+            "mode": { "type": "string" },
+            "priority": { "enum": ["high", "normal", "low"] },
+            "instructions": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "tools": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "output": {
+              "type": "object",
+              "properties": {
+                "format": { "type": "string" },
+                "schema": { "type": "string" }
+              }
+            },
+            "budget": { "type": "object" }
+          }
+        }
+      }
+    },
+    "schemaNode": {
+      "type": "object",
+      "required": ["id", "type", "attrs"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "const": "rmd.schema" },
+        "attrs": {
+          "type": "object",
+          "required": ["id", "type"],
+          "properties": {
+            "id": { "type": "string" },
+            "type": { "type": "string" },
+            "src": { "type": "string" },
+            "schema": { "type": "object" },
+            "description": { "type": "string" }
+          }
+        }
+      }
+    },
+    "indexNode": {
+      "type": "object",
+      "required": ["id", "type", "attrs"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "const": "rmd.index" },
+        "attrs": {
+          "type": "object",
+          "required": ["id", "target"],
+          "properties": {
+            "id": { "type": "string" },
+            "target": { "type": "string" },
+            "artifacts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["kind", "src"],
+                "properties": {
+                  "kind": { "type": "string" },
+                  "src": { "type": "string" },
+                  "format": { "type": "string" },
+                  "sha256": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "markdownNode": {
+      "type": "object",
+      "required": ["id", "type", "raw"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "const": "rmd.markdown" },
+        "range": { "$ref": "#/$defs/sourceRange" },
+        "raw": { "type": "string" }
+      }
+    },
+    "rmdNode": {
+      "oneOf": [
+        { "$ref": "#/$defs/markdownNode" },
+        { "$ref": "#/$defs/mediaNode" },
+        { "$ref": "#/$defs/annotationNode" },
+        { "$ref": "#/$defs/semanticNode" },
+        { "$ref": "#/$defs/provenanceNode" },
+        { "$ref": "#/$defs/agentNode" },
+        { "$ref": "#/$defs/schemaNode" },
+        { "$ref": "#/$defs/indexNode" }
+      ]
+    }
+  }
+}
