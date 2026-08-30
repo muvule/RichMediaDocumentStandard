@@ -76,12 +76,35 @@ export function isSelectorCompatibleWithMedia(selector: Selector, mediaKind: Med
         error: `Spatial selector is only allowed on visual media ('image', 'video', '3d'), but target is '${mediaKind}'`
       };
     }
-    if (selector.type === 'xywh' || selector.type === 'normalized-xywh') {
+    if (selector.type === 'xywh') {
+      if ((selector.x ?? 0) < 0 || (selector.y ?? 0) < 0) {
+        return { valid: false, error: 'Spatial coordinates x and y cannot be negative' };
+      }
       if ((selector.width ?? 0) <= 0 || (selector.height ?? 0) <= 0) {
-        return {
-          valid: false,
-          error: `Spatial width and height must be positive numbers`
-        };
+        return { valid: false, error: 'Spatial width and height must be positive numbers' };
+      }
+      if (
+        selector.unit === 'normalized' &&
+        ((selector.x ?? 0) > 1 || (selector.y ?? 0) > 1 || (selector.width ?? 0) > 1 || (selector.height ?? 0) > 1)
+      ) {
+        return { valid: false, error: 'Normalized coordinates must be between 0.0 and 1.0' };
+      }
+    } else if (selector.type === 'normalized-xywh') {
+      if (
+        (selector.x ?? 0) < 0 ||
+        (selector.y ?? 0) < 0 ||
+        (selector.x ?? 0) > 1 ||
+        (selector.y ?? 0) > 1 ||
+        (selector.width ?? 0) <= 0 ||
+        (selector.width ?? 0) > 1 ||
+        (selector.height ?? 0) <= 0 ||
+        (selector.height ?? 0) > 1
+      ) {
+        return { valid: false, error: 'Normalized coordinates must be between 0.0 and 1.0' };
+      }
+    } else if (selector.type === 'polygon') {
+      if (!selector.points || selector.points.length < 3) {
+        return { valid: false, error: 'Polygon selector requires at least 3 vertices' };
       }
     }
   }

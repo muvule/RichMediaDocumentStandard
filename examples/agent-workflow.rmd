@@ -38,7 +38,7 @@ budget:
 ```
 
 ```rmd:schema
-id: evidence-pack/v1
+id: schema:evidence-pack-v1
 type: json-schema
 src: ../schemas/evidence-pack.schema.json
 description: "Output contract for agent reasoning packs returned to downstream verification pipelines."

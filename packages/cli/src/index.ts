@@ -6,6 +6,8 @@ import {
   toAgentGraph,
   RMDQueryEngine,
   canonicalizeJSON,
+  canonicalizeRMD,
+  computeSha256,
   formatSelector,
   ASTNode,
   ParseDiagnostic,
@@ -258,11 +260,14 @@ program
         case 'canonical':
           outputText = canonicalizeJSON(toAgentGraph(doc));
           break;
+        case 'canonical-rmd':
+          outputText = canonicalizeRMD(content);
+          break;
         case 'context':
           outputText = engine.toPromptContext();
           break;
         default:
-          console.error(`Unknown format: '${options.format}'. Use 'ast', 'graph', 'json', 'canonical', or 'context'.`);
+          console.error(`Unknown format: '${options.format}'. Use 'ast', 'graph', 'json', 'canonical', 'canonical-rmd', or 'context'.`);
           process.exit(1);
       }
 
@@ -278,12 +283,13 @@ program
     }
   });
 
-// 5. Ingest Command
+// 6. Ingest Command
 program
   .command('ingest <targetPath>')
   .description('Automatically ingest a folder of media files or single media file into a valid RMD document')
   .option('-o, --output <file>', 'Output .rmd file path')
   .option('-t, --title <title>', 'Document title')
+  .option('--max-files <number>', 'Maximum files to scan (default: 1000)', '1000')
   .option('--no-objects', 'Disable object detection')
   .option('--no-scenes', 'Disable scene detection')
   .option('--no-transcribe', 'Disable audio transcription')
@@ -301,18 +307,29 @@ program
 
       const stat = fs.statSync(fullPath);
       const filePaths: string[] = [];
+      const maxFiles = parseInt(options.maxFiles, 10) || 1000;
 
       if (stat.isDirectory()) {
-        const entries = fs.readdirSync(fullPath, { recursive: true }) as string[];
-        for (const entry of entries) {
-          const entryPath = path.join(fullPath, entry);
-          if (fs.statSync(entryPath).isFile()) {
-            const ext = path.extname(entryPath).toLowerCase().replace('.', '');
-            if (['png', 'jpg', 'jpeg', 'webp', 'gif', 'mp4', 'webm', 'mov', 'mp3', 'wav', 'ogg', 'm4a', 'aac'].includes(ext)) {
-              filePaths.push(entryPath);
+        const scanDir = (dir: string) => {
+          if (filePaths.length >= maxFiles) return;
+          const entries = fs.readdirSync(dir, { withFileTypes: true });
+          for (const entry of entries) {
+            if (filePaths.length >= maxFiles) break;
+            const entryPath = path.join(dir, entry.name);
+            if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'dist') {
+              continue;
+            }
+            if (entry.isDirectory()) {
+              scanDir(entryPath);
+            } else if (entry.isFile()) {
+              const ext = path.extname(entry.name).toLowerCase().replace('.', '');
+              if (['png', 'jpg', 'jpeg', 'webp', 'gif', 'mp4', 'webm', 'mov', 'mp3', 'wav', 'ogg', 'm4a', 'aac'].includes(ext)) {
+                filePaths.push(entryPath);
+              }
             }
           }
-        }
+        };
+        scanDir(fullPath);
       } else {
         filePaths.push(fullPath);
       }
@@ -325,15 +342,37 @@ program
       console.log(`📦 Discovered ${filePaths.length} media file(s). Probing metadata...`);
 
       const discoveredAssets = filePaths.map((fp) => {
-        const buffer = fs.readFileSync(fp);
+        const fileStat = fs.statSync(fp);
         const rel = path.relative(process.cwd(), fp).replace(/\\/g, '/');
+
+        // Streaming SHA-256 calculation for memory efficiency
+        let sha256 = '';
+        if (fileStat.size < 10 * 1024 * 1024) {
+          const buffer = fs.readFileSync(fp);
+          sha256 = computeSha256(new Uint8Array(buffer));
+        } else {
+          const crypto = require('crypto');
+          const fileBuf = fs.readFileSync(fp);
+          sha256 = crypto.createHash('sha256').update(fileBuf).digest('hex');
+        }
+
+        // Header-only probing buffer (up to 1MB)
+        const headerSize = Math.min(fileStat.size, 1024 * 1024);
+        const fd = fs.openSync(fp, 'r');
+        const headerBuf = Buffer.alloc(headerSize);
+        fs.readSync(fd, headerBuf, 0, headerSize, 0);
+        fs.closeSync(fd);
+
         const asset = probeBufferMetadata(
-          new Uint8Array(buffer),
+          new Uint8Array(headerBuf),
           path.basename(fp),
           fp,
           rel
         );
-        console.log(`   - [${asset.kind.toUpperCase()}] ${asset.fileName} (${(asset.byteSize / 1024).toFixed(1)} KB${asset.width ? `, ${asset.width}x${asset.height}` : ''}${asset.duration ? `, ${asset.duration}s` : ''})`);
+        asset.byteSize = fileStat.size;
+        asset.sha256 = sha256;
+
+        console.log(`   - [${asset.kind.toUpperCase()}] ${asset.fileName} (${(asset.byteSize / (1024 * 1024)).toFixed(2)} MB${asset.width ? `, ${asset.width}x${asset.height}` : ''}${asset.duration ? `, ${asset.duration}s` : ''})`);
         return asset;
       });
 

@@ -146,7 +146,7 @@
             "kind": { "enum": ["image", "video", "audio", "document", "dataset", "3d"] },
             "src": { "type": "string" },
             "mime": { "type": "string" },
-            "sha256": { "type": "string" },
+            "sha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" },
             "byteSize": { "type": "integer", "minimum": 0 },
             "duration": { "type": "number", "minimum": 0 },
             "width": { "type": "integer", "minimum": 0 },

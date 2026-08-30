@@ -17,9 +17,16 @@ import { isSelectorCompatibleWithMedia } from './selectors.js';
 // Zod Schemas
 // ----------------------------------------------------
 
+export const ID_REGEX = /^[a-zA-Z0-9_\-.:]+$/;
+
 export const FrontMatterSchema = z.object({
-  rmd: z.union([z.string(), z.number()]).transform((val) => String(val)),
-  id: z.string().min(1, 'Missing document id'),
+  rmd: z
+    .union([z.string(), z.number()])
+    .transform((val) => String(val))
+    .refine((v) => /^\d+\.\d+(\.\d+)?$/.test(v), {
+      message: "rmd version must follow SemVer pattern (e.g. '0.1' or '0.1.0')"
+    }),
+  id: z.string().min(1, 'Missing document id').regex(ID_REGEX, 'Document ID contains invalid characters'),
   title: z.string().min(1, 'Missing document title'),
   language: z.string().optional().default('en'),
   created: z.string().optional(),
@@ -49,15 +56,42 @@ export const TemporalSelectorSchema = z.object({
   chapterId: z.string().optional()
 });
 
-export const SpatialSelectorSchema = z.object({
-  type: z.enum(['xywh', 'polygon', 'normalized-xywh']),
-  unit: z.enum(['pixel', 'percent', 'normalized']).optional().default('pixel'),
-  x: z.number().optional(),
-  y: z.number().optional(),
-  width: z.number().min(0).optional(),
-  height: z.number().min(0).optional(),
-  points: z.array(z.tuple([z.number(), z.number()])).optional()
-});
+export const SpatialSelectorSchema = z
+  .object({
+    type: z.enum(['xywh', 'polygon', 'normalized-xywh']),
+    unit: z.enum(['pixel', 'percent', 'normalized']).optional().default('pixel'),
+    x: z.number().min(0, 'Coordinate x cannot be negative').optional(),
+    y: z.number().min(0, 'Coordinate y cannot be negative').optional(),
+    width: z.number().min(0, 'Width cannot be negative').optional(),
+    height: z.number().min(0, 'Height cannot be negative').optional(),
+    points: z.array(z.tuple([z.number(), z.number()])).optional()
+  })
+  .superRefine((val, ctx) => {
+    if (val.type === 'xywh') {
+      if (val.unit === 'normalized') {
+        if ((val.x ?? 0) > 1 || (val.y ?? 0) > 1 || (val.width ?? 0) > 1 || (val.height ?? 0) > 1) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Normalized spatial coordinates must be between 0.0 and 1.0'
+          });
+        }
+      }
+    } else if (val.type === 'normalized-xywh') {
+      if ((val.x ?? 0) > 1 || (val.y ?? 0) > 1 || (val.width ?? 0) > 1 || (val.height ?? 0) > 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Normalized spatial coordinates must be between 0.0 and 1.0'
+        });
+      }
+    } else if (val.type === 'polygon') {
+      if (!val.points || val.points.length < 3) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Polygon selector requires at least 3 vertices'
+        });
+      }
+    }
+  });
 
 export const TextRangeSelectorSchema = z.object({
   type: z.literal('text-range'),
@@ -81,11 +115,11 @@ export const SelectorSchema: z.ZodType<any> = z.lazy(() =>
 );
 
 export const MediaBlockSchema = z.object({
-  id: z.string().min(1),
+  id: z.string().min(1).regex(ID_REGEX, 'Media ID contains invalid characters'),
   kind: z.enum(['image', 'video', 'audio', 'document', 'dataset', '3d']),
   src: z.string().min(1),
   mime: z.string().min(1),
-  sha256: z.string().optional(),
+  sha256: z.string().regex(/^[a-fA-F0-9]{64}$/, 'sha256 must be a 64-character hexadecimal string').optional(),
   byteSize: z.number().int().nonnegative().optional(),
   duration: z.number().nonnegative().optional(),
   width: z.number().int().nonnegative().optional(),
@@ -100,8 +134,8 @@ export const MediaBlockSchema = z.object({
 });
 
 export const AnnotationBlockSchema = z.object({
-  id: z.string().min(1),
-  target: z.string().min(1),
+  id: z.string().min(1).regex(ID_REGEX, 'Annotation ID contains invalid characters'),
+  target: z.string().min(1).regex(ID_REGEX, 'Target ID contains invalid characters'),
   type: z.string().min(1),
   selector: SelectorSchema.optional(),
   body: z.unknown().optional(),
@@ -187,14 +221,14 @@ export const SchemaBlockSchema = z.object({
 });
 
 export const IndexBlockSchema = z.object({
-  id: z.string().min(1),
-  target: z.string().min(1),
+  id: z.string().min(1).regex(ID_REGEX, 'Index ID contains invalid characters'),
+  target: z.string().min(1).regex(ID_REGEX, 'Target ID contains invalid characters'),
   artifacts: z.array(
     z.object({
       kind: z.string(),
       src: z.string(),
       format: z.string().optional(),
-      sha256: z.string().optional()
+      sha256: z.string().regex(/^[a-fA-F0-9]{64}$/, 'sha256 must be a 64-character hexadecimal string').optional()
     })
   )
 });
@@ -235,8 +269,6 @@ export function validateDocument(doc: RMDDocument): ParseDiagnostic[] {
     });
   }
 
-  const ID_REGEX = /^[a-zA-Z0-9_\-.:]+$/;
-
   // 2. Collect and Index Media Assets, Annotations & Indexes
   const mediaMap = new Map<string, MediaASTNode>();
   const annotationMap = new Map<string, AnnotationASTNode>();
@@ -248,7 +280,9 @@ export function validateDocument(doc: RMDDocument): ParseDiagnostic[] {
       indexSet.add(idxNode.attrs.id);
     } else if (node.type === 'rmd.annotation') {
       const annNode = node as AnnotationASTNode;
-      annotationMap.set(annNode.attrs.id, annNode);
+      if (!annotationMap.has(annNode.attrs.id)) {
+        annotationMap.set(annNode.attrs.id, annNode);
+      }
     }
   }
 
@@ -271,9 +305,9 @@ export function validateDocument(doc: RMDDocument): ParseDiagnostic[] {
       // Syntax check on ID format
       if (!ID_REGEX.test(mediaNode.attrs.id)) {
         diagnostics.push({
-          level: 'warning',
-          code: 'WARN_INVALID_ID_SYNTAX',
-          message: `ID '${mediaNode.attrs.id}' contains special characters outside recommended pattern [a-zA-Z0-9_\\-.:]+`,
+          level: 'error',
+          code: 'ERR_INVALID_ID_SYNTAX',
+          message: `ID '${mediaNode.attrs.id}' contains special characters outside pattern [a-zA-Z0-9_\\-.:]+`,
           range: node.range,
           nodeId: mediaNode.attrs.id
         });
@@ -350,8 +384,8 @@ export function validateDocument(doc: RMDDocument): ParseDiagnostic[] {
 
         if (!ID_REGEX.test(blockId)) {
           diagnostics.push({
-            level: 'warning',
-            code: 'WARN_INVALID_ID_SYNTAX',
+            level: 'error',
+            code: 'ERR_INVALID_ID_SYNTAX',
             message: `ID '${blockId}' contains characters outside pattern [a-zA-Z0-9_\\-.:]+`,
             range: node.range,
             nodeId: blockId

@@ -122,6 +122,7 @@
             { "type": "string" },
             {
               "type": "object",
+              "additionalProperties": true,
               "properties": {
                 "label": { "type": "string" },
                 "text": { "type": "string" },

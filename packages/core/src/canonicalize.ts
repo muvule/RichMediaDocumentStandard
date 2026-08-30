@@ -1,3 +1,71 @@
+import YAML from 'yaml';
+import { tokenizeRMD } from './lexer.js';
+
+function sortKeysDeep(val: unknown): unknown {
+  if (val === null || typeof val !== 'object') {
+    return val;
+  }
+  if (Array.isArray(val)) {
+    return val.map(sortKeysDeep);
+  }
+  const obj = val as Record<string, unknown>;
+  const sortedObj: Record<string, unknown> = {};
+  const keys = Object.keys(obj).sort();
+  for (const k of keys) {
+    if (obj[k] !== undefined && typeof obj[k] !== 'function' && typeof obj[k] !== 'symbol') {
+      sortedObj[k] = sortKeysDeep(obj[k]);
+    }
+  }
+  return sortedObj;
+}
+
+/**
+ * Deterministically serialize a complete .rmd document per SPEC §6:
+ * 1. Unicode Normalization: NFC
+ * 2. Newline Normalization: LF
+ * 3. Lexicographical YAML key sorting for frontmatter and all rmd:* blocks
+ * 4. 2-space indentation
+ * 5. Trailing whitespace stripping
+ */
+export function canonicalizeRMD(source: string): string {
+  const normalized = source.normalize('NFC').replace(/\r\n/g, '\n');
+  const tokens = tokenizeRMD(normalized);
+  const parts: string[] = [];
+
+  for (const token of tokens) {
+    if (token.type === 'frontmatter') {
+      try {
+        const parsed = YAML.parse(token.content);
+        const sorted = sortKeysDeep(parsed);
+        const yamlStr = YAML.stringify(sorted, { indent: 2, lineWidth: 0 });
+        parts.push(`---\n${yamlStr.trim()}\n---`);
+      } catch {
+        parts.push(`---\n${token.content.trim()}\n---`);
+      }
+    } else if (token.type === 'rmd_block') {
+      try {
+        const parsed = YAML.parse(token.payload);
+        const sorted = sortKeysDeep(parsed);
+        const yamlStr = YAML.stringify(sorted, { indent: 2, lineWidth: 0 });
+        parts.push(`\`\`\`rmd:${token.blockType}\n${yamlStr.trim()}\n\`\`\``);
+      } catch {
+        parts.push(`\`\`\`rmd:${token.blockType}\n${token.payload.trim()}\n\`\`\``);
+      }
+    } else if (token.type === 'markdown') {
+      const trimmed = token.content
+        .split('\n')
+        .map((l) => l.trimEnd())
+        .join('\n')
+        .trim();
+      if (trimmed.length > 0) {
+        parts.push(trimmed);
+      }
+    }
+  }
+
+  return parts.join('\n\n') + '\n';
+}
+
 /**
  * Deterministically sort all keys of an object recursively (RFC 8785 JSON Canonicalization Scheme).
  * Omits keys with undefined, function, or symbol values.

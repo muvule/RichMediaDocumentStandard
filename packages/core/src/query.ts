@@ -15,6 +15,7 @@ import {
 } from './types.js';
 import { toAgentGraph } from './graph.js';
 import { formatSelector } from './selectors.js';
+import { inspectC2PAManifest } from './c2pa.js';
 
 export class RMDQueryEngine {
   private doc: RMDDocument;
@@ -191,6 +192,16 @@ export class RMDQueryEngine {
 
     const minObserved = claims.reduce((min, c) => Math.min(min, c.confidence), 1.0);
 
+    const allAssetsHaveSha256 =
+      this.graph.assets.length > 0 &&
+      this.graph.assets.every((a) => !!a.sha256 && /^[a-fA-F0-9]{64}$/.test(a.sha256));
+
+    const provenanceVerified =
+      this.graph.provenance.length === 0 ||
+      this.graph.provenance.every((p) => !p.c2pa || inspectC2PAManifest(p.c2pa).verified);
+
+    const cryptographicIntegrityVerified = allAssetsHaveSha256 && provenanceVerified;
+
     return {
       documentId: this.graph.document.id,
       documentTitle: this.graph.document.title,
@@ -204,7 +215,7 @@ export class RMDQueryEngine {
       auditTrail: {
         totalEvidenceNodes: claims.length,
         minConfidenceObserved: claims.length > 0 ? minObserved : 1.0,
-        cryptographicIntegrityVerified: true,
+        cryptographicIntegrityVerified,
         provenanceIssuer: this.graph.provenance[0]?.creator || 'RMD Local Validation Fabric'
       }
     };

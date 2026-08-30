@@ -156,4 +156,93 @@ mime: image/jpeg
     const doc = parseRMD(multiBacktickRmd);
     expect(doc.nodes.some((n) => n.type === 'rmd.media' && (n as any).attrs.id === 'media-4-backticks')).toBe(true);
   });
+
+  it('should emit ERR_MISSING_FRONTMATTER when frontmatter is omitted', () => {
+    const noFmRmd = `# Just Markdown
+
+\`\`\`rmd:media
+id: media-still
+kind: image
+src: ./image.jpg
+mime: image/jpeg
+\`\`\`
+`;
+    const doc = parseRMD(noFmRmd);
+    const fmErr = doc.diagnostics.find((d) => d.code === 'ERR_MISSING_FRONTMATTER');
+    expect(fmErr).toBeDefined();
+    expect(fmErr?.level).toBe('error');
+  });
+
+  it('should reject invalid rmd SemVer versions', () => {
+    const badVersionRmd = `---
+rmd: "invalid-version"
+id: doc:bad-version
+title: Bad Version
+---
+`;
+    const doc = parseRMD(badVersionRmd);
+    expect(doc.diagnostics.some((d) => d.message.includes('SemVer') || d.code === 'ERR_INVALID_FRONTMATTER')).toBe(true);
+  });
+
+  it('should reject invalid sha256 hashes', () => {
+    const badShaRmd = `---
+rmd: 0.1
+id: doc:bad-sha
+title: Bad SHA
+---
+
+\`\`\`rmd:media
+id: media-bad-sha
+kind: image
+src: ./image.jpg
+mime: image/jpeg
+sha256: "not-a-64-hex-hash"
+\`\`\`
+`;
+    const doc = parseRMD(badShaRmd);
+    expect(doc.diagnostics.some((d) => d.message.includes('sha256') || d.code === 'ERR_SCHEMA_VALIDATION')).toBe(true);
+  });
+
+  it('should reject IDs containing invalid characters with ERR_INVALID_ID_SYNTAX', () => {
+    const badIdRmd = `---
+rmd: 0.1
+id: "bad id with spaces"
+title: Bad ID
+---
+`;
+    const doc = parseRMD(badIdRmd);
+    expect(doc.diagnostics.some((d) => d.code === 'ERR_INVALID_FRONTMATTER' || d.code === 'ERR_INVALID_ID_SYNTAX')).toBe(true);
+  });
+
+  it('should reject negative spatial coordinates', () => {
+    const negCoordRmd = `---
+rmd: 0.1
+id: doc:neg-coord
+title: Negative Coord
+---
+
+\`\`\`rmd:media
+id: media-img
+kind: image
+src: ./img.jpg
+mime: image/jpeg
+\`\`\`
+
+\`\`\`rmd:annotation
+id: ann-neg
+target: media-img
+type: defect
+selector:
+  type: xywh
+  unit: pixel
+  x: -10
+  y: 20
+  width: 100
+  height: 100
+\`\`\`
+`;
+    const doc = parseRMD(negCoordRmd);
+    expect(doc.diagnostics.some((d) => d.message.includes('negative') || d.code === 'ERR_SCHEMA_VALIDATION' || d.code === 'ERR_INCOMPATIBLE_SELECTOR')).toBe(true);
+  });
 });
+

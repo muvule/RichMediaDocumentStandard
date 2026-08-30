@@ -41,6 +41,15 @@ export function parseRMD(source: string): RMDDocument {
     title: 'Untitled Document'
   };
 
+  const hasFrontmatter = tokens.length > 0 && tokens[0].type === 'frontmatter';
+  if (!hasFrontmatter) {
+    diagnostics.push({
+      level: 'error',
+      code: 'ERR_MISSING_FRONTMATTER',
+      message: 'RMD document is missing required YAML frontmatter with rmd, id, and title.'
+    });
+  }
+
   for (const token of tokens) {
     if (token.type === 'frontmatter') {
       try {
