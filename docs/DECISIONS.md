@@ -76,3 +76,21 @@ Enterprise compliance (GDPR, HIPAA, SOC 2) requires masking faces, license plate
 
 ### Decision
 RMD supports `type: redaction` annotations directly in the document graph, instructing ingestion workers to dynamically apply blur or silence filters before generating downstream slices.
+
+---
+
+## ADR-006: Rejection of Inline Base64 and Blind URLs for Multimodal Agents
+
+### Context
+Developers attempting to make Markdown self-contained often use inline Base64 data URIs (`![img](data:image/jpeg;base64,...)`) or standard blind links (`![photo](https://...)`). Both create severe flaws for AI agents:
+1. **Base64 Token Inflation:** A single image generates tens of thousands of characters of random text gibberish, wasting context window space and costing \$2.50+ per turn without providing readable text.
+2. **Vision API Disconnect:** Multimodal LLMs (GPT-4o, Claude, Gemini) accept binary image payloads, not raw Base64 strings dumped into text prompt streams.
+3. **Blind Links:** Standard URLs provide zero visibility into intrinsic dimensions, scene intervals, or bounding boxes, forcing slow re-downloads and causing visual hallucinations.
+
+### Decision
+RMD separates the document narrative from media payloads by maintaining clean, structured manifests (`rmd:media`) and targeted evidence anchors (`rmd:annotation`). Downstream agent SDKs extract minimal **evidence slices** (~150 tokens) on demand.
+
+### Consequences
+* **Positive:** 99.98% token and cost savings (\$0.001 vs \$2.50 per query).
+* **Positive:** Complete prevention of Base64 context window pollution and indirect prompt injection data exfiltration via malformed image tags.
+

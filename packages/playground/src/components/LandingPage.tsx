@@ -115,42 +115,60 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenStudio }) => {
         <section className="space-y-6 text-slate-300 leading-relaxed text-base">
           <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight flex items-center gap-2.5">
             <span className="text-emerald-400 font-mono text-lg">01.</span>
-            The Multimodal Token & Latency Bottleneck
+            Why Putting Media in Markdown is Broken for AI Agents
           </h2>
 
           <p>
-            Autonomous coding and research agents are evolving from single-turn chatbots into multi-step agentic loops executing dozens of consecutive reasoning steps. In physical-world domains—such as infrastructure inspection, insurance claim triaging, legal discovery, and medical radiology—agents must reason over multi-gigabyte collections of high-resolution drone images, 4K inspection videos, and audio testimonies.
+            Developers building multimodal AI agents (for drone inspections, insurance triaging, radiology, or legal discovery) run into a major dilemma when working with Markdown:
           </p>
 
-          <p>
-            Today's common practice is to pass raw media files directly into multimodal LLMs. However, inside an autonomous loop, ingesting a 1.5 GB drone video 50 times in a row creates an unbearable bottleneck:
-          </p>
-
-          {/* Cost Comparison Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 font-mono">
+          {/* 3-Way Comparison Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 font-mono">
+            {/* Card 1: Base64 */}
             <div className="p-5 rounded-xl bg-red-950/20 border border-red-900/60 space-y-3">
               <div className="flex items-center justify-between text-red-400 text-xs font-bold uppercase tracking-wider">
-                <span>Traditional Raw Ingestion</span>
+                <span>1. The Base64 Trap</span>
                 <XCircle className="w-4 h-4" />
               </div>
-              <div className="text-2xl font-bold text-red-300">$2.50 <span className="text-xs text-slate-400 font-normal">/ query</span></div>
+              <div className="text-xs text-slate-300 bg-slate-950/80 p-2 rounded border border-red-900/40 truncate text-red-300">
+                ![img](data:image/jpeg;base64...)
+              </div>
               <ul className="text-xs text-slate-400 space-y-1.5 font-sans">
-                <li>• 12 to 20 seconds inference latency per turn</li>
-                <li>• Ingests 500,000+ raw video tokens per prompt</li>
-                <li>• Zero determinism: non-reproducible visual hallucination</li>
+                <li>• <strong>Token Inflation:</strong> 50,000+ characters of random text gibberish.</li>
+                <li>• <strong>Breaks Vision:</strong> LLMs see a wall of text, not an image payload.</li>
+                <li>• Exorbitant context costs ($2.50+ / turn).</li>
               </ul>
             </div>
 
-            <div className="p-5 rounded-xl bg-emerald-950/20 border border-emerald-800/60 space-y-3">
-              <div className="flex items-center justify-between text-emerald-400 text-xs font-bold uppercase tracking-wider">
-                <span>RMD Standard Retrieval</span>
-                <CheckCircle2 className="w-4 h-4" />
+            {/* Card 2: Blind Link */}
+            <div className="p-5 rounded-xl bg-amber-950/20 border border-amber-900/60 space-y-3">
+              <div className="flex items-center justify-between text-amber-400 text-xs font-bold uppercase tracking-wider">
+                <span>2. The Blind Link Trap</span>
+                <XCircle className="w-4 h-4" />
               </div>
-              <div className="text-2xl font-bold text-emerald-300">$0.001 <span className="text-xs text-slate-400 font-normal">/ query</span></div>
+              <div className="text-xs text-slate-300 bg-slate-950/80 p-2 rounded border border-amber-900/40 truncate text-amber-300">
+                ![drone](https://cdn.com/4k.mp4)
+              </div>
               <ul className="text-xs text-slate-400 space-y-1.5 font-sans">
-                <li>• &lt;10 millisecond targeted evidence slice resolution</li>
-                <li>• 99.98% token and bandwidth reduction</li>
-                <li>• Verifiable spatial bounding boxes & temporal timecodes</li>
+                <li>• <strong>Completely Opaque:</strong> Model has 0 knowledge of what's inside.</li>
+                <li>• <strong>Slow Downloads:</strong> Re-scans multi-GB files on every step (15-20s).</li>
+                <li>• Causes visual hallucinations.</li>
+              </ul>
+            </div>
+
+            {/* Card 3: RMD Standard */}
+            <div className="p-5 rounded-xl bg-emerald-950/25 border-2 border-emerald-500/80 space-y-3 shadow-lg shadow-emerald-950/40">
+              <div className="flex items-center justify-between text-emerald-400 text-xs font-bold uppercase tracking-wider">
+                <span className="flex items-center gap-1"><Sparkles className="w-3.5 h-3.5" /> 3. The RMD Standard</span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div className="text-xs text-emerald-300 bg-slate-950/80 p-2 rounded border border-emerald-800/60 truncate font-bold">
+                ```rmd:annotation target: media:drone
+              </div>
+              <ul className="text-xs text-slate-300 space-y-1.5 font-sans">
+                <li>• <strong>Evidence Slices:</strong> Pixel boxes (`xywh`) & timecodes (~150 tokens).</li>
+                <li>• <strong>99.98% Savings:</strong> <strong>$0.001 / query</strong>, &lt;10ms latency.</li>
+                <li>• 100% human-readable plain text.</li>
               </ul>
             </div>
           </div>

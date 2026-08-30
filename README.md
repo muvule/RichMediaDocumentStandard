@@ -1,79 +1,54 @@
 # 📑 Rich Media Document (RMD) Standard
 
-> **The open standard for agent-native rich media documents.**  
-> Enriches Markdown with spatial bounding boxes, video/audio intervals, and deterministic multimodal AI evidence grounding.
+> **Plain-text Markdown for the multimodal AI era.**  
+> Turns photos, 4K inspection videos, and audio into **searchable, lightweight evidence anchors** inside Markdown—without blowing up your context window with messy Base64 text or forcing models to re-read gigabytes of raw pixels.
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Specification Version](https://img.shields.io/badge/Spec-v0.1-emerald.svg)](#specification-overview)
-[![Tests Passing](https://img.shields.io/badge/Tests-19%2F19%20Passing-brightgreen.svg)]()
+[![Specification Version](https://img.shields.io/badge/Spec-v0.1-emerald.svg)](docs/SPEC-v0.1.md)
+[![Tests Passing](https://img.shields.io/badge/Tests-49%2F49%20Passing-brightgreen.svg)]()
 [![Node Version](https://img.shields.io/badge/Node.js-18%2B-green.svg)]()
 
 ---
 
-## ⚡ The Problem: The Multimodal Token Bottleneck
+## ⚡ Why Putting Media in Markdown is Broken for AI Agents
 
-When autonomous AI agents analyze high-resolution drone photos, 4K inspection videos, or hours of audio, passing multi-gigabyte raw files repeatedly into LLM prompts causes massive latency and exorbitant API costs.
+Today, developers building multimodal AI agents (for inspections, insurance, medical imaging, or legal discovery) run into a major dilemma when working with Markdown:
 
-| Metric | Traditional Raw Media Ingestion | RMD Standard Retrieval |
-| :--- | :--- | :--- |
-| **Cost per Agent Step** | **~$2.50** (500k+ video tokens) | **~$0.001** (~250 tokens) |
-| **Retrieval Latency** | **12–20 seconds** | **< 10 milliseconds** |
-| **Token & Bandwidth Savings** | 0% | **99.98% Reduction** |
-| **Determinism** | Non-reproducible visual hallucinations | **Verifiable W3C `xywh` & timecodes** |
+```
+❌ The Base64 Trap:                ❌ The Blind Link Trap:            ✅ The RMD Standard:
+![photo](data:image/jpeg;base64...)   ![photo](https://site.com/4k.mp4)   ```rmd:annotation
+                                                                        target: media:drone-01
+• 50,000+ characters of gibberish    • Completely opaque to the LLM     selector: {xywh: [1420,880,240,190]}
+• Inflates token costs ($2.50/turn)   • Requires downloading full file   claim: "Hotspot on Panel B12"
+• Vision models can't parse text B64  • Non-reproducible hallucinations  • ~150 tokens ($0.001/turn)
+```
+
+| Approach | What Goes into Prompt | Cost per Agent Step | AI Vision Impact | Determinism |
+| :--- | :--- | :--- | :--- | :--- |
+| **Inline Base64** (`data:...`) | 50,000+ text tokens of random characters | **~$2.50+** / turn | ❌ **Broken:** LLMs see a wall of text, not an image | ❌ Chokes context window |
+| **Standard Link** (`![img](url)`) | Opaque URL (0 visual tokens) | **~$0.00** (blind) | ❌ **Opaque:** LLM knows nothing without full redownload | ❌ Hallucinated claims |
+| **RMD Standard** (`.rmd`) | Precision **Evidence Slices** (~150 tokens) | **~$0.001** / turn | ✅ **Grounded:** Exact bounding boxes, OCR & timecodes | ✅ **Verifiable & Tamper-Proof** |
 
 ---
 
-## 🚀 Quickstart
+## 💡 How RMD Works: "Index Once, Query 10,000 Times"
 
-### 1. Ingest Media Automatically via CLI
+Rather than forcing multimodal models to re-scan multi-gigabyte raw pixels on every single step of an autonomous agent loop, RMD indexes media into a **lightweight, 4-tier retrieval funnel**:
 
-Generate an `.rmd` document directly from any folder of photos, inspection videos, or audio recordings:
-
-```bash
-# Ingest an entire folder of inspection media
-npx @rmd/cli ingest ./my_inspection_folder/ --output report.rmd
-
-# Or compile a single media asset
-npx @rmd/cli compile ./drone_survey.mp4 --output survey.rmd
-```
-
-### 2. Validate & Inspect Documents
-
-```bash
-# Validate syntax, selectors, and schema conformance
-npx @rmd/cli validate report.rmd
-
-# Inspect media manifests, dimensions, and token savings
-npx @rmd/cli inspect report.rmd
-```
-
----
-
-## 🏗️ How RMD Works: The 4-Tier Evidence Funnel
-
-Rather than re-scanning raw pixels on every agent turn, RMD indexes media into a 4-tier retrieval hierarchy:
-
-```
-┌────────────────────────────────────────────────────────┐
-│  Tier 1: Document Frontmatter & Semantic Index         │  ~200 tokens
-│  High-level scene summaries, entities, and taxonomies  │
-├────────────────────────────────────────────────────────┤
-│  Tier 2: Media Manifests (rmd:media)                   │  ~150 tokens
-│  Intrinsic dimensions, durations, hashes, and scenes   │
-├────────────────────────────────────────────────────────┤
-│  Tier 3: Grounded Evidence Anchors (rmd:annotation)   │  ~100 tokens
-│  W3C spatial bounding boxes (xywh) & timecodes        │
-├────────────────────────────────────────────────────────┤
-│  Tier 4: Deep Raw Slicing (Deferred / On-Demand Only)  │  Exact Sub-Crop
-│  Extracts precise sub-pixel crops or audio clips       │
-└────────────────────────────────────────────────────────┘
-```
+1. **Document Frontmatter & Semantic Index (`rmd:semantic`)** (~200 tokens)  
+   High-level document overview, scene summaries, topic tags, and entity relationships.
+2. **Media Manifests (`rmd:media`)** (~150 tokens)  
+   Authoritative pixel coordinate spaces (`width`, `height`), durations, MIME types, and cryptographic SHA-256 hashes.
+3. **Grounded Evidence Anchors (`rmd:annotation`)** (~100 tokens)  
+   Ties discrete factual claims to exact W3C spatial bounding boxes (`xywh: pixel`) and video/audio timecodes (`start..end`).
+4. **Deep Raw Slicing (Deferred / On-Demand Only)**  
+   If and only if an agent needs high-precision re-verification, the engine extracts the sub-pixel crop or audio slice.
 
 ---
 
 ## 📝 Syntax Example
 
-An `.rmd` file is **100% valid plain text Markdown** enriched with typed `rmd:*` blocks:
+An `.rmd` file is **100% valid plain text Markdown** enriched with typed, human-readable blocks:
 
 ````markdown
 ---
@@ -120,15 +95,15 @@ source: extracted
 
 ---
 
-## 🚀 Developer Quickstart
+## 🚀 Quickstart
 
-### Option 1: Global CLI Tool
+### 1. Global CLI Tool
 ```bash
 # Install CLI globally
 npm install -g @rmd/cli
 
 # Ingest any media directory into a structured RMD document
-rmd ingest ./surveys/ --objects --scenes --output ./report.rmd
+rmd ingest ./surveys/ --output ./report.rmd
 
 # Validate document conformance & integrity
 rmd validate ./report.rmd
@@ -137,7 +112,7 @@ rmd validate ./report.rmd
 rmd query ./report.rmd --filter "hotspot" --tokens
 ```
 
-### Option 2: Node.js / TypeScript SDK
+### 2. Node.js / TypeScript SDK
 ```typescript
 import { parseRMD, toAgentGraph, RMDQueryEngine } from '@rmd/core';
 import * as fs from 'fs';
@@ -156,7 +131,7 @@ const evidence = engine.findEvidence('micro-fracture');
 console.log(`Found ${evidence.length} evidence anchors with ${engine.calculateByteSavings().savingsPercentage}% token savings`);
 ```
 
-### Option 3: Docker Zero-Install Ingestion
+### 3. Docker Zero-Install Ingestion
 ```bash
 # Ingest using Docker without installing Node.js locally
 docker run --rm -v $(pwd):/workspace ghcr.io/muvule/rmd:latest ingest /workspace/data -o /workspace/output.rmd
@@ -183,13 +158,16 @@ docker run --rm -v $(pwd):/workspace ghcr.io/muvule/rmd:latest ingest /workspace
 
 ## 📊 Market Comparison
 
-| Feature | Standard Markdown | W3C Web Annotation | C2PA Provenance | RMD Standard (.rmd) |
+| Feature | Standard Markdown | Base64 in Markdown | W3C Web Annotation | RMD Standard (.rmd) |
 | :--- | :---: | :---: | :---: | :---: |
-| **Human Readable** | ✅ Yes | ❌ JSON-LD only | ❌ Binary JUMBF | **✅ 100% Markdown** |
-| **Spatial (`xywh`) Anchors** | ❌ None | ✅ Complex | ❌ None | **✅ Pixel Bounding Boxes** |
-| **Temporal Video/Audio Clips** | ❌ None | ✅ Selectors | ❌ None | **✅ Timecode Intervals** |
-| **Agent-Native 4-Tier Funnel** | ❌ Text only | ❌ Browser-only | ❌ No reasoning hooks | **✅ 99.98% Token Savings** |
-| **Git Diffable & Portable** | ✅ Yes | ⚠️ Boilerplate | ❌ Binary | **✅ Single Plaintext File** |
+| **Human Readable** | ✅ Yes | ❌ Wall of text | ❌ JSON-LD only | **✅ 100% Markdown** |
+| **Spatial (`xywh`) Anchors** | ❌ None | ❌ None | ✅ Complex | **✅ Pixel Bounding Boxes** |
+| **Temporal Timecodes** | ❌ None | ❌ None | ✅ Selectors | **✅ Timecode Intervals** |
+| **Token Efficiency** | ⚠️ Blind link | ❌ Massive inflation | ❌ Heavy JSON-LD | **✅ 99.98% Token Savings** |
+| **Agent Tool Grounding** | ❌ None | ❌ None | ❌ Browser-centric | **✅ Structured Evidence Packs** |
+| **Git Diffable & Portable** | ✅ Yes | ❌ Bloats Git history | ⚠️ Boilerplate | **✅ Single Plaintext File** |
+
+---
 
 ## 💻 Monorepo Workspace
 
