@@ -64,15 +64,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenStudio }) => {
       <main className="max-w-4xl mx-auto px-6 pt-12 pb-24 space-y-16">
         {/* Article Meta Header */}
         <section className="space-y-6">
-          <div className="flex flex-wrap items-center gap-3 text-xs font-mono text-slate-400">
-            <span className="px-2.5 py-1 rounded bg-slate-900 text-emerald-400 border border-slate-800 font-bold uppercase tracking-wider">
-              Research & Standard
-            </span>
-            <span>AUG 2026</span>
-            <span>•</span>
-            <span>12 MIN READ</span>
-            <span>•</span>
-            <span className="text-purple-400 font-bold">APACHE 2.0 OPEN SOURCE</span>
+          {/* Hero Emblem & Metadata */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <RMDLogo size={52} showText={false} />
+            <div className="flex flex-wrap items-center gap-3 text-xs font-mono text-slate-400">
+              <span className="px-2.5 py-1 rounded bg-slate-900 text-emerald-400 border border-slate-800 font-bold uppercase tracking-wider">
+                Research & Standard
+              </span>
+              <span>AUG 2026</span>
+              <span>•</span>
+              <span>12 MIN READ</span>
+              <span>•</span>
+              <span className="text-purple-400 font-bold">APACHE 2.0 OPEN SOURCE</span>
+            </div>
           </div>
 
           <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-[1.15]">

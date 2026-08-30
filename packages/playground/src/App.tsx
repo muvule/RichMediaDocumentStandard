@@ -366,7 +366,14 @@ ${starterAnnLines.join('\n')}
       <header className="h-12 bg-slate-950 border-b border-slate-800 px-4 flex items-center justify-between select-none">
         {/* Logo and Brand */}
         <div className="flex items-center gap-3">
-          <RMDLogo size={28} showText={true} />
+          <button
+            type="button"
+            onClick={() => setActiveAppTab('article')}
+            className="hover:opacity-90 transition text-left focus:outline-none"
+            title="Return to Overview Article"
+          >
+            <RMDLogo size={32} showText={true} />
+          </button>
 
           <button
             type="button"
