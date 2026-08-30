@@ -71,6 +71,9 @@ export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
 
       // 1. If RMD or Markdown document
       if (ext === 'rmd' || ext === 'md' || file.type.includes('markdown') || file.type.includes('text')) {
+        if (file.size > 25 * 1024 * 1024) {
+          throw new Error('Document file is too large (maximum 25MB for plain text RMD documents).');
+        }
         const text = await file.text();
         onLoadRMDFile(text, fileName);
         setIsProcessing(false);
@@ -227,13 +230,21 @@ export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
 
   const handleUrlSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!urlInput.trim()) return;
+    const trimmed = urlInput.trim();
+    if (!trimmed) return;
 
-    const cleanId = urlInput.split('/').pop()?.split('?')[0]?.replace(/[^a-zA-Z0-9_\-]/g, '-').toLowerCase() || 'remote-media';
+    // Security check: validate protocol against javascript: or unsafe schemes
+    const isSafeUrl = /^(https?:\/\/|\.\/|\/|blob:|data:(image|video|audio)\/)/i.test(trimmed);
+    if (!isSafeUrl || /^(javascript|vbscript|data:text\/html):/i.test(trimmed)) {
+      alert('Security Notice: Only standard web URLs (http://, https://) and media data URIs are permitted.');
+      return;
+    }
+
+    const cleanId = trimmed.split('/').pop()?.split('?')[0]?.replace(/[^a-zA-Z0-9_\-]/g, '-').toLowerCase() || 'remote-media';
     const mediaAttrs: MediaBlockAttrs = {
       id: `${urlKind}-${cleanId}`,
       kind: urlKind,
-      src: urlInput.trim(),
+      src: trimmed,
       mime: urlMime || (urlKind === 'video' ? 'video/mp4' : urlKind === 'audio' ? 'audio/mpeg' : 'image/jpeg'),
       width: urlKind === 'image' ? 1200 : urlKind === 'video' ? 1920 : undefined,
       height: urlKind === 'image' ? 800 : urlKind === 'video' ? 1080 : undefined,
