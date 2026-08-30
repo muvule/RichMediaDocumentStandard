@@ -16,7 +16,14 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
+# Website & Playground (Not pushed to public repo)
+packages/playground/
+render.yaml
+vercel.json
+DEPLOY.md
+
 # System Artifacts & Temporary Files
 .gemini/
 .system_generated/
 *.log
+

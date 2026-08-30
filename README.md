@@ -128,7 +128,6 @@ evidence: Cell micro-fracture causing resistance heating (Delta T = +14.2°C).
 
 - **`@rmd/core`**: Zero-dependency TypeScript parser, AST generator, query engine, and binary prober.
 - **`@rmd/cli`**: Command-line tool for ingestion, validation, compilation, and benchmarks.
-- **`@rmd/playground`**: Interactive web studio with real-time SVG bounding box overlays, video sync, AST inspector, and 1-click auto-fix debugger.
 
 ---
 
