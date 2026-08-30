@@ -1,10 +1,18 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { execSync } from 'child_process';
+import * as fs from 'fs';
 import * as path from 'path';
 
 describe('RMD CLI Subcommand Integration Tests', () => {
   const cliBin = path.resolve(__dirname, '../bin/rmd.js');
   const examplesDir = path.resolve(__dirname, '../../../examples');
+
+  beforeAll(() => {
+    const distPath = path.resolve(__dirname, '../dist/index.js');
+    if (!fs.existsSync(distPath)) {
+      execSync('npm run build', { cwd: path.resolve(__dirname, '../../..') });
+    }
+  });
 
   const runCLI = (args: string) => {
     return execSync(`node ${cliBin} ${args}`, {
